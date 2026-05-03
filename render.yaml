@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: leopard-manager
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: TURSO_DATABASE_URL
+        sync: false      # Render UIで設定
+      - key: TURSO_AUTH_TOKEN
+        sync: false
+      - key: CHATWORK_API_TOKEN
+        sync: false
+      - key: CHATWORK_ROOM_ID
+        sync: false
+      - key: CHATWORK_MENTION_IDS
+        sync: false
+      - key: NOTIFY_ENABLED
+        value: "true"
+      - key: NOTIFY_MORNING_CRON
+        value: "0 9 * * *"
+      - key: NOTIFY_EVENING_CRON
+        value: "0 20 * * *"

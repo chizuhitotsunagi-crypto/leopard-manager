@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <title>レオパ管理 / 履歴</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="appbar">
+    <h1>🦎 ひとつなぎ動物管理</h1>
+    <nav>
+      <a href="/">入力</a>
+      <a href="/history.html" class="active">履歴</a>
+      <a href="/individual.html">個体別</a>
+      <a href="/settings.html">設定</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="date-nav">
+      <button class="btn" id="prevMonth">← 前月</button>
+      <input type="month" id="monthPicker">
+      <button class="btn" id="nextMonth">翌月 →</button>
+      <button class="btn" id="thisMonth">今月</button>
+      <a class="btn btn-soft" id="csvLink" download>CSVダウンロード</a>
+      <a class="btn btn-soft" id="xlsxLink" download>Excelダウンロード（月）</a>
+      <a class="btn btn-primary" href="/api/export/all.xlsx" download>📦 全期間アーカイブ（Excel）</a>
+    </div>
+
+    <div class="card">
+      <h3 id="monthTitle"></h3>
+      <div id="legend" style="display:flex;gap:12px;margin-bottom:8px;font-size:12px;color:var(--muted)">
+        <span>🟢 記入済み</span>
+        <span>🟡 フルメンテ</span>
+        <span>🔴 記入漏れ</span>
+        <span>⬜︎ 未入力</span>
+      </div>
+      <div class="calendar" id="calendar"></div>
+    </div>
+
+    <div class="card">
+      <h3>明細</h3>
+      <table class="history">
+        <thead>
+          <tr>
+            <th>日付</th><th>時間</th><th>担当</th>
+            <th>清掃</th><th>消毒</th><th>点検</th>
+            <th>数</th><th>状態</th><th>給餌個体数</th><th>備考</th>
+          </tr>
+        </thead>
+        <tbody id="historyBody"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <script>
+    const $ = (s) => document.querySelector(s);
+    function ymStr(d) {
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    }
+    async function loadMonth(yyyymm) {
+      $('#monthPicker').value = yyyymm;
+      $('#monthTitle').textContent = `${yyyymm} の記録`;
+      $('#csvLink').href = `/api/export/${yyyymm}.csv`;
+      $('#xlsxLink').href = `/api/export/${yyyymm}.xlsx`;
+      const data = await fetch(`/api/month/${yyyymm}`).then(r => r.json());
+      renderCalendar(yyyymm, data);
+      renderTable(data);
+    }
+    function renderCalendar(yyyymm, rows) {
+      const [y, m] = yyyymm.split('-').map(Number);
+      const lastDay = new Date(y, m, 0).getDate();
+      const startDow = new Date(y, m - 1, 1).getDay();
+
+      const recordMap = new Map(rows.map(r => [r.record_date, r]));
+
+      const cal = $('#calendar');
+      cal.innerHTML =
+        ['日', '月', '火', '水', '木', '金', '土']
+          .map(d => `<div class="head-day">${d}</div>`).join('');
+
+      // 先頭の空セル
+      for (let i = 0; i < startDow; i++) cal.innerHTML += `<div class="day empty"></div>`;
+
+      for (let d = 1; d <= lastDay; d++) {
+        const date = `${yyyymm}-${String(d).padStart(2, '0')}`;
+        const r = recordMap.get(date);
+        let cls = 'day';
+        let info = '';
+        if (r) {
+          cls += r.is_full_maintenance ? ' full-maint' : ' has-record';
+          info = `<div class="indicator">${r.staff_name || '-'} / 餌${r.fed_count}</div>`;
+        }
+        cal.innerHTML += `
+          <div class="${cls}" onclick="location.href='/?date=${date}'">
+            <div class="num">${d}</div>${info}
+          </div>`;
+      }
+    }
+    function renderTable(rows) {
+      $('#historyBody').innerHTML = rows.map(r => `
+        <tr>
+          <td><a href="/?date=${r.record_date}">${r.record_date}</a></td>
+          <td>${r.record_time || ''}</td>
+          <td>${r.staff_name || ''}</td>
+          <td>${r.cleaning ? '⚪︎' : '×'}</td>
+          <td>${r.disinfection ? '⚪︎' : '×'}</td>
+          <td>${r.maintenance ? '⚪︎' : '×'}</td>
+          <td>${r.count_status || ''}</td>
+          <td>${r.health_status || ''}</td>
+          <td>${r.fed_count}</td>
+          <td>${(r.notes || '').replace(/</g, '&lt;')}</td>
+        </tr>
+      `).join('');
+    }
+    function shiftMonth(yyyymm, delta) {
+      const [y, m] = yyyymm.split('-').map(Number);
+      const d = new Date(y, m - 1 + delta, 1);
+      return ymStr(d);
+    }
+    $('#monthPicker').addEventListener('change', () => loadMonth($('#monthPicker').value));
+    $('#prevMonth').addEventListener('click', () => loadMonth(shiftMonth($('#monthPicker').value, -1)));
+    $('#nextMonth').addEventListener('click', () => loadMonth(shiftMonth($('#monthPicker').value, 1)));
+    $('#thisMonth').addEventListener('click', () => loadMonth(ymStr(new Date())));
+
+    // 起動
+    loadMonth(ymStr(new Date()));
+  </script>
+</body>
+</html>

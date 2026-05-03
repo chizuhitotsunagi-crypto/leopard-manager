@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <title>レオパ管理 / 個体別</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <header class="appbar">
+    <h1>🦎 ひとつなぎ動物管理</h1>
+    <nav>
+      <a href="/">入力</a>
+      <a href="/history.html">履歴</a>
+      <a href="/individual.html" class="active">個体別</a>
+      <a href="/settings.html">設定</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="card">
+      <h3>個体を選択</h3>
+      <select id="animalSel" style="max-width:300px"></select>
+    </div>
+
+    <div class="card">
+      <h3>体重推移</h3>
+      <div style="height:280px"><canvas id="weightChart"></canvas></div>
+    </div>
+
+    <div class="card">
+      <h3>給餌・排泄履歴（直近12ヶ月）</h3>
+      <table class="history">
+        <thead>
+          <tr><th>日付</th><th>給餌</th><th>餌</th><th>量</th><th>糞</th><th>メモ</th></tr>
+        </thead>
+        <tbody id="historyBody"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <script>
+    let chart;
+    async function loadAnimals() {
+      const list = await fetch('/api/animals').then(r => r.json());
+      const sel = document.getElementById('animalSel');
+      sel.innerHTML = list.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+      sel.addEventListener('change', () => loadIndividual(Number(sel.value)));
+      if (list.length) {
+        sel.value = list[0].id;
+        loadIndividual(list[0].id);
+      }
+    }
+
+    async function loadIndividual(id) {
+      const data = await fetch(`/api/individual/${id}`).then(r => r.json());
+
+      // 体重グラフ
+      const labels = data.weights.map(w => w.measured_at);
+      const values = data.weights.map(w => w.weight_g);
+      if (chart) chart.destroy();
+      chart = new Chart(document.getElementById('weightChart'), {
+        type: 'line',
+        data: { labels, datasets: [{ label: '体重(g)', data: values, borderColor: '#d97706', backgroundColor: '#fef3c7', tension: .2, pointRadius: 4 }] },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: false } } }
+      });
+
+      // 履歴テーブル
+      const tbody = document.getElementById('historyBody');
+      tbody.innerHTML = data.history.slice().reverse().map(r => `
+        <tr>
+          <td>${r.record_date}</td>
+          <td>${r.no_feeding ? '<span class="badge warn">なし</span>' : '<span class="badge good">あり</span>'}</td>
+          <td>${(r.foods || []).join('、')}</td>
+          <td>${r.amount || ''}</td>
+          <td>${r.poop || ''}</td>
+          <td>${(r.notes || '').replace(/</g, '&lt;')}</td>
+        </tr>
+      `).join('');
+    }
+
+    loadAnimals();
+  </script>
+</body>
+</html>

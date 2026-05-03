@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <title>レオパ管理 / 設定</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="appbar">
+    <h1>🦎 ひとつなぎ動物管理</h1>
+    <nav>
+      <a href="/">入力</a>
+      <a href="/history.html">履歴</a>
+      <a href="/individual.html">個体別</a>
+      <a href="/settings.html" class="active">設定</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="card">
+      <h3>個体マスタ</h3>
+      <div id="animalsList"></div>
+      <div style="margin-top:8px;display:flex;gap:8px">
+        <input type="text" id="newAnimalName" placeholder="新規個体名（例: ⑪、ガブリエル）" style="max-width:280px">
+        <button class="btn btn-primary" id="addAnimal">追加</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>餌マスタ</h3>
+      <div id="foodsList"></div>
+      <div style="margin-top:8px;display:flex;gap:8px">
+        <input type="text" id="newFoodName" placeholder="新規餌（例: ハニーワーム）" style="max-width:280px">
+        <button class="btn btn-primary" id="addFood">追加</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>担当者マスタ</h3>
+      <div id="staffList"></div>
+      <div style="margin-top:8px;display:flex;gap:8px">
+        <input type="text" id="newStaffName" placeholder="新規担当者名" style="max-width:280px">
+        <button class="btn btn-primary" id="addStaff">追加</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Chatwork通知テスト</h3>
+      <p style="color:var(--muted);font-size:13px">
+        サーバー側 <code>.env</code> に <code>CHATWORK_API_TOKEN</code> と <code>CHATWORK_ROOM_ID</code> を設定してから押してください。
+      </p>
+      <button class="btn btn-primary" id="testNotify">通知を送信</button>
+      <button class="btn" id="dryRun">送信せずログ確認</button>
+      <div id="notifyResult" style="margin-top:12px;font-family:monospace;font-size:12px"></div>
+    </div>
+
+    <div class="card">
+      <h3>アラート手動実行</h3>
+      <p style="color:var(--muted);font-size:13px">
+        通常は朝9時／夜20時に自動実行されますが、手動で確認することもできます。
+      </p>
+      <button class="btn" id="runAlerts">アラートチェック実行（送信あり）</button>
+      <button class="btn" id="runAlertsDry">アラートチェック（送信なし）</button>
+      <pre id="alertResult" style="margin-top:12px;background:#f8f6f0;padding:8px;border-radius:6px;font-size:12px"></pre>
+    </div>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const $ = (s) => document.querySelector(s);
+    function toast(t) {
+      const el = $('#toast'); el.textContent = t; el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 1500);
+    }
+    async function api(method, url, body) {
+      const r = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: body ? JSON.stringify(body) : undefined
+      });
+      return r.json();
+    }
+    function simpleRow(items, kind) {
+      return items.map(it => `
+        <div class="list-row">
+          <span class="name">${it.name} ${it.active ? '' : '<span class="badge">無効</span>'}</span>
+        </div>
+      `).join('');
+    }
+    function animalRow(a) {
+      const sexClass = a.category === 'sale' ? 'cat-sale' : (a.sex === 'M' ? 'sex-M' : a.sex === 'F' ? 'sex-F' : '');
+      const sexBadge = a.sex === 'M' ? '♂' : a.sex === 'F' ? '♀' : '?';
+      return `
+        <div class="list-row" style="align-items:center;padding:8px 0">
+          ${a.photo_url ? `<img src="${a.photo_url}" style="width:40px;height:40px;border-radius:6px;object-fit:cover" onerror="this.style.display='none'">` : '<div style="width:40px;height:40px;background:var(--bg);border-radius:6px"></div>'}
+          <span class="name" style="display:flex;flex-direction:column">
+            <strong>${a.name} <span style="font-size:11px;color:var(--muted)">${sexBadge} / ${a.category === 'sale' ? '販売個体' : '名前付き'}</span></strong>
+            <span style="font-size:11px;color:var(--muted)">${a.morph || 'モルフ未設定'}</span>
+          </span>
+          <button class="btn btn-soft" data-edit="${a.id}">編集</button>
+          <button class="btn btn-ghost" data-deact="${a.id}">${a.active ? '無効化' : '有効化'}</button>
+        </div>
+      `;
+    }
+    async function loadAll() {
+      const animals = await api('GET', '/api/animals?all=1');
+      $('#animalsList').innerHTML = animals.map(animalRow).join('');
+      $('#animalsList').querySelectorAll('[data-edit]').forEach(btn => {
+        btn.addEventListener('click', () => openEditModal(animals.find(a => a.id == btn.dataset.edit)));
+      });
+      $('#animalsList').querySelectorAll('[data-deact]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          if (!confirm('この個体を無効化しますか？（過去データは残ります）')) return;
+          await fetch(`/api/animals/${btn.dataset.deact}`, { method: 'DELETE' });
+          toast('変更しました'); loadAll();
+        });
+      });
+      const foods = await api('GET', '/api/foods?all=1');
+      $('#foodsList').innerHTML = simpleRow(foods);
+      const staff = await api('GET', '/api/staff?all=1');
+      $('#staffList').innerHTML = simpleRow(staff);
+    }
+
+    function openEditModal(a) {
+      const html = `
+        <div class="modal-bg" id="modalBg" style="position:fixed;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;z-index:200">
+          <div style="background:#fff;padding:24px;border-radius:12px;max-width:500px;width:90%;max-height:90vh;overflow:auto">
+            <h3 style="margin-top:0">${a.name} を編集</h3>
+            <div class="field-row">
+              <div><label>名前</label><input type="text" id="m-name" value="${a.name || ''}"></div>
+              <div><label>カテゴリ</label>
+                <select id="m-category">
+                  <option value="named" ${a.category === 'named' ? 'selected' : ''}>名前付き</option>
+                  <option value="sale" ${a.category === 'sale' ? 'selected' : ''}>販売個体（番号）</option>
+                </select>
+              </div>
+              <div><label>性別</label>
+                <select id="m-sex">
+                  <option value="M" ${a.sex === 'M' ? 'selected' : ''}>♂ オス</option>
+                  <option value="F" ${a.sex === 'F' ? 'selected' : ''}>♀ メス</option>
+                  <option value="U" ${a.sex === 'U' ? 'selected' : ''}>不明</option>
+                </select>
+              </div>
+              <div><label>生年月日</label><input type="date" id="m-birth" value="${a.birth_date || ''}"></div>
+            </div>
+            <div style="margin-top:8px"><label>モルフ</label>
+              <input type="text" id="m-morph" value="${a.morph || ''}" placeholder="例: タンジェリン × ブラッド">
+            </div>
+            <div style="margin-top:8px"><label>系統</label>
+              <input type="text" id="m-lineage" value="${a.lineage || ''}" placeholder="例: Tangerine_BloodxMandarin">
+            </div>
+            <div style="margin-top:8px"><label>写真URL</label>
+              <input type="text" id="m-photo" value="${a.photo_url || ''}" placeholder="https://...">
+            </div>
+            <div style="margin-top:8px"><label>参照元URL</label>
+              <input type="text" id="m-source" value="${a.source_url || ''}">
+            </div>
+            <div style="margin-top:8px"><label>メモ</label>
+              <textarea id="m-notes">${a.notes || ''}</textarea>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+              <button class="btn" id="m-cancel">キャンセル</button>
+              <button class="btn btn-primary" id="m-save">保存</button>
+            </div>
+          </div>
+        </div>`;
+      document.body.insertAdjacentHTML('beforeend', html);
+      $('#m-cancel').onclick = () => $('#modalBg').remove();
+      $('#m-save').onclick = async () => {
+        const payload = {
+          id: a.id,
+          name: $('#m-name').value.trim(),
+          display_order: a.display_order,
+          active: a.active,
+          notes: $('#m-notes').value || null,
+          category: $('#m-category').value,
+          sex: $('#m-sex').value,
+          morph: $('#m-morph').value || null,
+          lineage: $('#m-lineage').value || null,
+          birth_date: $('#m-birth').value || null,
+          photo_url: $('#m-photo').value || null,
+          source_url: $('#m-source').value || null
+        };
+        const r = await fetch('/api/animals', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (r.ok) {
+          $('#modalBg').remove();
+          toast('保存しました'); loadAll();
+        } else {
+          alert('保存失敗');
+        }
+      };
+    }
+    $('#addAnimal').addEventListener('click', async () => {
+      const name = $('#newAnimalName').value.trim();
+      if (!name) return;
+      await api('POST', '/api/animals', { name, display_order: 99 });
+      $('#newAnimalName').value = '';
+      toast('追加しました'); loadAll();
+    });
+    $('#addFood').addEventListener('click', async () => {
+      const name = $('#newFoodName').value.trim();
+      if (!name) return;
+      await api('POST', '/api/foods', { name, display_order: 99 });
+      $('#newFoodName').value = '';
+      toast('追加しました'); loadAll();
+    });
+    $('#addStaff').addEventListener('click', async () => {
+      const name = $('#newStaffName').value.trim();
+      if (!name) return;
+      await api('POST', '/api/staff', { name });
+      $('#newStaffName').value = '';
+      toast('追加しました'); loadAll();
+    });
+
+    $('#testNotify').addEventListener('click', async () => {
+      const r = await fetch('/api/notify/test', { method: 'POST' }).then(r => r.json());
+      $('#notifyResult').textContent = JSON.stringify(r, null, 2);
+    });
+    $('#dryRun').addEventListener('click', async () => {
+      const r = await fetch('/api/notify/test?dry=1', { method: 'POST' }).then(r => r.json());
+      $('#notifyResult').textContent = JSON.stringify(r, null, 2) + '\n（dryRun: 実送信していません）';
+    });
+    $('#runAlerts').addEventListener('click', async () => {
+      const r = await fetch('/api/notify/run', { method: 'POST' }).then(r => r.json());
+      $('#alertResult').textContent = JSON.stringify(r, null, 2);
+    });
+    $('#runAlertsDry').addEventListener('click', async () => {
+      const r = await fetch('/api/notify/run?dry=1', { method: 'POST' }).then(r => r.json());
+      $('#alertResult').textContent = JSON.stringify(r, null, 2);
+    });
+
+    loadAll();
+  </script>
+</body>
+</html>

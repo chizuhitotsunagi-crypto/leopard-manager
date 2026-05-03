@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <title>レオパ管理 / 入力</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+</head>
+<body>
+  <header class="appbar">
+    <h1>🦎 ひとつなぎ動物管理</h1>
+    <nav>
+      <a href="/" class="active">入力</a>
+      <a href="/history.html">履歴</a>
+      <a href="/individual.html">個体別</a>
+      <a href="/settings.html">設定</a>
+    </nav>
+  </header>
+
+  <main>
+    <!-- アラートバナー -->
+    <div id="alertArea"></div>
+
+    <!-- 日付ナビ -->
+    <div class="date-nav">
+      <button class="btn" id="prevDay">← 前日</button>
+      <input type="date" id="recordDate">
+      <button class="btn" id="nextDay">翌日 →</button>
+      <button class="btn" id="today">今日</button>
+      <button class="btn btn-soft" id="copyPrev">前日の内容をコピー</button>
+      <span id="recordStatus" style="margin-left:auto;color:var(--muted)"></span>
+    </div>
+
+    <!-- 共通項目 -->
+    <div class="card">
+      <h3>共通項目
+        <button class="btn btn-soft" id="markAllNormal" style="margin-left:auto">すべて通常通り</button>
+      </h3>
+
+      <div class="field-row">
+        <div>
+          <label>記録時間</label>
+          <input type="time" id="recordTime">
+        </div>
+        <div>
+          <label>担当者</label>
+          <select id="staffId"></select>
+        </div>
+        <div>
+          <label>数</label>
+          <select id="countStatus">
+            <option>変動なし</option>
+            <option>+1</option><option>+2</option><option>+3</option>
+            <option>-1</option><option>-2</option><option>-3</option>
+          </select>
+        </div>
+        <div>
+          <label>状態</label>
+          <select id="healthStatus">
+            <option>良好</option>
+            <option>変化なし</option>
+            <option>※（要確認）</option>
+          </select>
+        </div>
+        <div>
+          <label>糞（共通）</label>
+          <select id="cleaningStatus">
+            <option>掃除済み</option>
+            <option>糞なし</option>
+            <option>未対応</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+        <span class="toggle on" data-key="cleaning">清掃 ⚪︎</span>
+        <span class="toggle on" data-key="disinfection">消毒 ⚪︎</span>
+        <span class="toggle on" data-key="maintenance">保守点検 ⚪︎</span>
+        <span class="toggle" data-key="is_full_maintenance" id="fullMaintToggle">フルメンテ</span>
+      </div>
+
+      <div style="margin-top:12px">
+        <label>備考</label>
+        <textarea id="notes" placeholder="シェルター全洗、新個体追加 など"></textarea>
+      </div>
+    </div>
+
+    <!-- 個体ごと -->
+    <div class="card">
+      <h3>個体ごとの記録
+        <button class="btn btn-soft" id="markAllNoFeeding" style="margin-left:auto">全個体「給餌なし」</button>
+      </h3>
+      <div id="animalGrid" class="animal-grid"></div>
+    </div>
+
+    <!-- フルメンテ時の体重欄 -->
+    <div class="card" id="weightSection" style="display:none">
+      <h3>体重測定（フルメンテ時のみ）</h3>
+      <div id="weightGrid" class="field-row"></div>
+    </div>
+
+    <!-- 保存ボタン -->
+    <div style="display:flex;gap:8px;margin-top:24px;justify-content:flex-end">
+      <button class="btn" id="reload">読み直す</button>
+      <button class="btn btn-primary" id="save">保存</button>
+    </div>
+  </main>
+
+  <div class="toast" id="toast"></div>
+  <script src="/app.js"></script>
+</body>
+</html>

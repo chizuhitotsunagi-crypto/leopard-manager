@@ -1,0 +1,6 @@
+node_modules/
+data/animals.db
+data/animals.db-shm
+data/animals.db-wal
+.env
+.DS_Store

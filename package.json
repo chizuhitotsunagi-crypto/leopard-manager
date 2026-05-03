@@ -1,0 +1,24 @@
+{
+  "name": "leopard-manager",
+  "version": "1.0.0",
+  "description": "ひとつなぎ レオパ動物管理表 Web アプリ",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "init-db": "node scripts/init-db.js",
+    "migrate": "node scripts/migrate.js",
+    "import-excel": "node scripts/import-excel.js",
+    "dump": "node scripts/dump-to-sql.js",
+    "test-notify": "node scripts/test-notify.js"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.14.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "node-cron": "^3.0.3",
+    "xlsx": "^0.18.5"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
