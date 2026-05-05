@@ -111,10 +111,26 @@ app.post('/api/notify/test', wrap(async (req, res) => {
 }));
 
 app.post('/api/notify/run', wrap(async (req, res) => {
-  const long = await alerts.checkLongTermFoodAlerts({ dryRun: req.query.dry === '1' });
-  const miss = await alerts.checkMissingRecords({ dryRun: req.query.dry === '1' });
-  res.json({ long, miss });
+  const dryRun = req.query.dry === '1';
+  const asOfDate = req.query.date || null;
+  const long = await alerts.checkLongTermFoodAlerts({ dryRun, asOfDate });
+  const miss = await alerts.checkMissingRecords({ dryRun, asOfDate });
+  res.json({ long, miss, asOfDate: asOfDate || new Date().toISOString().slice(0, 10) });
 }));
+
+// GET でも呼べるようにする（cronサービスから簡単にアクセスできるように）
+app.get('/api/notify/run', wrap(async (req, res) => {
+  const dryRun = req.query.dry === '1';
+  const asOfDate = req.query.date || null;
+  const long = await alerts.checkLongTermFoodAlerts({ dryRun, asOfDate });
+  const miss = await alerts.checkMissingRecords({ dryRun, asOfDate });
+  res.json({ long, miss, asOfDate: asOfDate || new Date().toISOString().slice(0, 10) });
+}));
+
+// ヘルスチェック（uptime用）
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', time: new Date().toISOString() });
+});
 
 // ================================================================
 // CSV / XLSX エクスポート

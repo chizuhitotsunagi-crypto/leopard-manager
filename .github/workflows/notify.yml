@@ -1,0 +1,27 @@
+name: Scheduled Notifications
+
+# JST 9:00 → UTC 0:00、JST 20:00 → UTC 11:00
+on:
+  schedule:
+    - cron: '0 0 * * *'   # 朝9時JST: 1週間給餌なし警告
+    - cron: '0 11 * * *'  # 夜20時JST: 記入漏れ警告
+  workflow_dispatch:       # 手動実行も可能
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wake up Render and trigger notifications
+        run: |
+          # Render がスリープ中なら起動を待つ
+          for i in {1..6}; do
+            if curl -fsSL --max-time 30 "https://leopard-manager.onrender.com/api/health" > /dev/null; then
+              echo "App is awake"
+              break
+            fi
+            echo "Attempt $i: waiting for app to wake up..."
+            sleep 10
+          done
+          # 通知トリガー
+          curl -fsSL --max-time 60 "https://leopard-manager.onrender.com/api/notify/run" \
+            -X GET -H "User-Agent: github-actions-cron" || echo "Notify run completed (any error logged)"
