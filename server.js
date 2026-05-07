@@ -133,30 +133,72 @@ app.get('/api/health', (req, res) => {
 });
 
 // ================================================================
-// CSV / XLSX エクスポート
+// エクスポート: CSV / XLSX / Google Sheets連携
 // ================================================================
-app.get('/api/export/:yyyymm.csv', wrap(async (req, res) => {
-  const yyyymm = req.params.yyyymm;
+function ymFromQueryOrPath(req) {
+  return (req.query.month || req.params.yyyymm || '').replace(/\.(csv|xlsx)$/, '');
+}
+
+// CSV（Google Sheets の IMPORTDATA からも取得可能）
+app.get(['/api/export.csv', '/api/export/:yyyymm.csv'], wrap(async (req, res) => {
+  const yyyymm = ymFromQueryOrPath(req);
+  if (!/^\d{4}-\d{2}$/.test(yyyymm)) return res.status(400).json({ error: 'month is required (YYYY-MM)' });
   const csv = await require('./lib/csvExport').exportMonth(yyyymm);
+  // Google Sheets IMPORTDATA は inline 表示が必要
+  const inline = req.query.inline === '1';
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-  res.setHeader('Content-Disposition', `attachment; filename="動物管理表_${yyyymm}.csv"`);
-  res.write('﻿');
+  res.setHeader('Content-Disposition', `${inline ? 'inline' : 'attachment'}; filename="動物管理表_${yyyymm}.csv"`);
+  res.write('﻿'); // BOM
   res.end(csv);
 }));
 
-app.get('/api/export/:yyyymm.xlsx', wrap(async (req, res) => {
-  const buf = await require('./lib/xlsxExport').exportMonth(req.params.yyyymm);
-  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  res.setHeader('Content-Disposition', `attachment; filename="動物管理表_${req.params.yyyymm}.xlsx"`);
-  res.end(buf);
+// XLSX 月次
+app.get(['/api/export.xlsx', '/api/export/:yyyymm.xlsx'], wrap(async (req, res) => {
+  const yyyymm = ymFromQueryOrPath(req);
+  if (!/^\d{4}-\d{2}$/.test(yyyymm)) return res.status(400).json({ error: 'month is required (YYYY-MM)' });
+  try {
+    const buf = await require('./lib/xlsxExport').exportMonth(yyyymm);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="動物管理表_${yyyymm}.xlsx"`);
+    res.setHeader('Content-Length', buf.length);
+    res.end(buf);
+  } catch (e) {
+    console.error('xlsx export error:', e);
+    res.status(500).json({ error: e.message });
+  }
 }));
 
-app.get('/api/export/all.xlsx', wrap(async (req, res) => {
-  const buf = await require('./lib/xlsxExport').exportAll();
-  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  res.setHeader('Content-Disposition', `attachment; filename="動物管理表_全期間.xlsx"`);
-  res.end(buf);
+// XLSX 全期間
+app.get(['/api/export-all.xlsx', '/api/export/all.xlsx'], wrap(async (req, res) => {
+  try {
+    const buf = await require('./lib/xlsxExport').exportAll();
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="動物管理表_全期間.xlsx"`);
+    res.setHeader('Content-Length', buf.length);
+    res.end(buf);
+  } catch (e) {
+    console.error('xlsx export error:', e);
+    res.status(500).json({ error: e.message });
+  }
 }));
+
+// Google Sheets 用の IMPORTDATA 公開URL案内（GETで JSON を返す）
+app.get('/api/export/sheets-info', (req, res) => {
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+  const yyyymm = (req.query.month || new Date().toISOString().slice(0, 7));
+  const csvUrl = `${baseUrl}/api/export.csv?month=${yyyymm}&inline=1`;
+  res.json({
+    yyyymm,
+    csvUrl,
+    importDataFormula: `=IMPORTDATA("${csvUrl}")`,
+    instructions: [
+      '新しいGoogle Sheetsを開く（sheets.new）',
+      '左上のセル（A1）をクリック',
+      '上の式をペーストしてEnter',
+      'データが自動で入る'
+    ]
+  });
+});
 
 // ダッシュボード
 app.get('/api/dashboard', wrap(async (req, res) => {

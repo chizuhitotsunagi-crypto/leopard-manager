@@ -24,9 +24,36 @@
       <input type="month" id="monthPicker">
       <button class="btn" id="nextMonth">翌月 →</button>
       <button class="btn" id="thisMonth">今月</button>
-      <a class="btn btn-soft" id="csvLink" download>CSVダウンロード</a>
-      <a class="btn btn-soft" id="xlsxLink" download>Excelダウンロード（月）</a>
-      <a class="btn btn-primary" href="/api/export/all.xlsx" download>📦 全期間アーカイブ（Excel）</a>
+    </div>
+
+    <div class="card" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <strong>エクスポート：</strong>
+      <a class="btn btn-soft" id="csvLink" download>📄 CSV</a>
+      <a class="btn btn-soft" id="xlsxLink" download>📊 Excel（月）</a>
+      <a class="btn btn-primary" href="/api/export-all.xlsx" download>📦 全期間Excel</a>
+      <button class="btn" id="sheetsBtn">📗 Google Sheets連携</button>
+    </div>
+
+    <!-- Google Sheets連携モーダル -->
+    <div id="sheetsModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);align-items:center;justify-content:center;z-index:200">
+      <div style="background:#fff;padding:24px;border-radius:12px;max-width:600px;width:90%">
+        <h3 style="margin-top:0">Google Sheetsで開く</h3>
+        <p style="color:var(--muted)">下の式を新しいGoogle Sheetsの A1 セルにペーストすると、データが自動取り込みされます。</p>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <input type="text" id="sheetsFormula" readonly style="font-family:monospace;font-size:12px">
+          <button class="btn btn-primary" id="sheetsCopy">コピー</button>
+        </div>
+        <ol style="font-size:13px;line-height:1.8">
+          <li>下のリンクをクリックして新しいGoogle Sheetsを開く<br>
+            → <a href="https://sheets.new/" target="_blank">https://sheets.new/</a></li>
+          <li>左上のセル（A1）をクリック</li>
+          <li>上の式を <strong>⌘V</strong>（または右クリック→ペースト）でペースト</li>
+          <li>Enterキーを押すとデータが入る</li>
+        </ol>
+        <div style="display:flex;justify-content:flex-end;margin-top:16px">
+          <button class="btn" id="sheetsClose">閉じる</button>
+        </div>
+      </div>
     </div>
 
     <div class="card">
@@ -60,15 +87,38 @@
     function ymStr(d) {
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     }
+    let currentMonth = '';
     async function loadMonth(yyyymm) {
+      currentMonth = yyyymm;
       $('#monthPicker').value = yyyymm;
       $('#monthTitle').textContent = `${yyyymm} の記録`;
-      $('#csvLink').href = `/api/export/${yyyymm}.csv`;
-      $('#xlsxLink').href = `/api/export/${yyyymm}.xlsx`;
+      $('#csvLink').href = `/api/export.csv?month=${yyyymm}`;
+      $('#xlsxLink').href = `/api/export.xlsx?month=${yyyymm}`;
       const data = await fetch(`/api/month/${yyyymm}`).then(r => r.json());
       renderCalendar(yyyymm, data);
       renderTable(data);
     }
+
+    // Google Sheets連携
+    $('#sheetsBtn').addEventListener('click', async () => {
+      const info = await fetch(`/api/export/sheets-info?month=${currentMonth}`).then(r => r.json());
+      $('#sheetsFormula').value = info.importDataFormula;
+      $('#sheetsModal').style.display = 'flex';
+    });
+    $('#sheetsCopy').addEventListener('click', async () => {
+      const f = $('#sheetsFormula');
+      f.select();
+      try {
+        await navigator.clipboard.writeText(f.value);
+        $('#sheetsCopy').textContent = '✓ コピー済み';
+        setTimeout(() => { $('#sheetsCopy').textContent = 'コピー'; }, 2000);
+      } catch (e) {
+        document.execCommand('copy');
+      }
+    });
+    $('#sheetsClose').addEventListener('click', () => {
+      $('#sheetsModal').style.display = 'none';
+    });
     function renderCalendar(yyyymm, rows) {
       const [y, m] = yyyymm.split('-').map(Number);
       const lastDay = new Date(y, m, 0).getDate();
