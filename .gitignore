@@ -1,6 +1,7 @@
 node_modules/
-data/animals.db
-data/animals.db-shm
-data/animals.db-wal
+
+# 個体データ・ローカルDB・インポート元Excelは公開しない
+data/
+
 .env
 .DS_Store

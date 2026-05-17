@@ -113,8 +113,16 @@
       });
       $('#animalsList').querySelectorAll('[data-deact]').forEach(btn => {
         btn.addEventListener('click', async () => {
-          if (!confirm('この個体を無効化しますか？（過去データは残ります）')) return;
-          await fetch(`/api/animals/${btn.dataset.deact}`, { method: 'DELETE' });
+          const animal = animals.find(a => a.id == btn.dataset.deact);
+          const isActive = animal && animal.active;
+          const name = animal ? animal.name : 'この個体';
+          if (isActive) {
+            if (!confirm(`${name} を無効化しますか？（過去データは残ります）`)) return;
+            await fetch(`/api/animals/${btn.dataset.deact}`, { method: 'DELETE' });
+          } else {
+            if (!confirm(`${name} を有効化しますか？`)) return;
+            await fetch(`/api/animals/${btn.dataset.deact}/activate`, { method: 'POST' });
+          }
           toast('変更しました'); loadAll();
         });
       });

@@ -41,6 +41,10 @@ app.delete('/api/animals/:id', wrap(async (req, res) => {
   await repo.deactivateAnimal(Number(req.params.id));
   res.json({ ok: true });
 }));
+app.post('/api/animals/:id/activate', wrap(async (req, res) => {
+  await repo.activateAnimal(Number(req.params.id));
+  res.json({ ok: true });
+}));
 app.post('/api/animals/reorder', wrap(async (req, res) => {
   await repo.reorderAnimals(req.body.items || []);
   res.json({ ok: true });
