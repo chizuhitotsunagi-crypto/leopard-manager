@@ -3,5 +3,8 @@ node_modules/
 # 個体データ・ローカルDB・インポート元Excelは公開しない
 data/
 
+# アップロードされた写真（個別ユーザーのコンテンツ）
+public/uploads/
+
 .env
 .DS_Store

@@ -6,6 +6,7 @@
   <meta name="robots" content="noindex, nofollow, noarchive">
   <title>レオパ管理 / 設定</title>
   <link rel="stylesheet" href="/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
 </head>
 <body>
   <header class="appbar">
@@ -20,7 +21,9 @@
 
   <main>
     <div class="card">
-      <h3>個体マスタ</h3>
+      <h3>個体マスタ
+        <span style="font-size:11px;color:var(--muted);font-weight:normal;margin-left:8px">⋮⋮ をドラッグして並び替え可能</span>
+      </h3>
       <div id="animalsList"></div>
       <div style="margin-top:8px;display:flex;gap:8px">
         <input type="text" id="newAnimalName" placeholder="新規個体名（例: ⑪、ガブリエル）" style="max-width:280px">
@@ -90,11 +93,13 @@
         </div>
       `).join('');
     }
-    function animalRow(a) {
+    function animalRow(a, index) {
       const sexClass = a.category === 'sale' ? 'cat-sale' : (a.sex === 'M' ? 'sex-M' : a.sex === 'F' ? 'sex-F' : '');
       const sexBadge = a.sex === 'M' ? '♂' : a.sex === 'F' ? '♀' : '?';
       return `
-        <div class="list-row" style="align-items:center;padding:8px 0">
+        <div class="list-row" data-id="${a.id}" style="align-items:center;padding:8px 0">
+          <span class="drag-handle" style="cursor:grab;color:var(--muted);user-select:none;padding:0 6px" title="ドラッグして並び替え">⋮⋮</span>
+          <span class="row-num" style="min-width:32px;color:var(--muted);font-size:12px;text-align:right">#${index + 1}</span>
           ${a.photo_url ? `<img src="${a.photo_url}" style="width:40px;height:40px;border-radius:6px;object-fit:cover" onerror="this.style.display='none'">` : '<div style="width:40px;height:40px;background:var(--bg);border-radius:6px"></div>'}
           <span class="name" style="display:flex;flex-direction:column">
             <strong>${a.name} <span style="font-size:11px;color:var(--muted)">${sexBadge} / ${a.category === 'sale' ? '販売個体' : '名前付き'}</span></strong>
@@ -105,9 +110,38 @@
         </div>
       `;
     }
+
+    function renumberRows() {
+      $('#animalsList').querySelectorAll('.list-row').forEach((row, i) => {
+        const numEl = row.querySelector('.row-num');
+        if (numEl) numEl.textContent = '#' + (i + 1);
+      });
+    }
+
     async function loadAll() {
       const animals = await api('GET', '/api/animals?all=1');
-      $('#animalsList').innerHTML = animals.map(animalRow).join('');
+      $('#animalsList').innerHTML = animals.map((a, i) => animalRow(a, i)).join('');
+
+      // ドラッグ&ドロップ並び替え
+      if (window.Sortable && !$('#animalsList')._sortable) {
+        $('#animalsList')._sortable = new Sortable($('#animalsList'), {
+          handle: '.drag-handle',
+          animation: 150,
+          onEnd: async () => {
+            renumberRows();
+            const items = Array.from($('#animalsList').querySelectorAll('.list-row')).map((row, i) => ({
+              id: Number(row.dataset.id),
+              display_order: i + 1,
+            }));
+            try {
+              await api('POST', '/api/animals/reorder', { items });
+              toast('並び順を保存しました');
+            } catch (e) {
+              alert('並び順の保存に失敗しました');
+            }
+          },
+        });
+      }
       $('#animalsList').querySelectorAll('[data-edit]').forEach(btn => {
         btn.addEventListener('click', () => openEditModal(animals.find(a => a.id == btn.dataset.edit)));
       });
@@ -160,8 +194,14 @@
             <div style="margin-top:8px"><label>系統</label>
               <input type="text" id="m-lineage" value="${a.lineage || ''}" placeholder="例: Tangerine_BloodxMandarin">
             </div>
-            <div style="margin-top:8px"><label>写真URL</label>
-              <input type="text" id="m-photo" value="${a.photo_url || ''}" placeholder="https://...">
+            <div style="margin-top:8px"><label>写真</label>
+              ${a.photo_url ? `<div style="margin-bottom:8px"><img src="${a.photo_url}" style="max-width:120px;max-height:120px;border-radius:8px;border:1px solid var(--border)"></div>` : ''}
+              <div id="m-drop" style="border:2px dashed var(--border);border-radius:8px;padding:16px;text-align:center;color:var(--muted);cursor:pointer;background:#fafafa">
+                📁 ここに画像をドロップ、またはクリックして選択<br>
+                <span style="font-size:11px">（jpg/png/webp、5MB以下）</span>
+              </div>
+              <input type="file" id="m-file" accept="image/*" style="display:none">
+              <input type="text" id="m-photo" value="${a.photo_url || ''}" placeholder="https://... （直接URL入力もOK）" style="margin-top:8px">
             </div>
             <div style="margin-top:8px"><label>参照元URL</label>
               <input type="text" id="m-source" value="${a.source_url || ''}">
@@ -177,6 +217,41 @@
         </div>`;
       document.body.insertAdjacentHTML('beforeend', html);
       $('#m-cancel').onclick = () => $('#modalBg').remove();
+
+      // === 写真アップロード（ドロップ＆ファイル選択） ===
+      const drop = $('#m-drop');
+      const fileInput = $('#m-file');
+      const photoInput = $('#m-photo');
+
+      async function uploadPhoto(file) {
+        if (!file) return;
+        if (!file.type.startsWith('image/')) { alert('画像ファイルのみアップロードできます'); return; }
+        if (file.size > 5 * 1024 * 1024) { alert('5MB以下にしてください'); return; }
+        drop.innerHTML = '⏳ アップロード中...';
+        try {
+          const form = new FormData();
+          form.append('file', file);
+          const r = await fetch('/api/upload-photo', { method: 'POST', body: form });
+          if (!r.ok) throw new Error('upload failed');
+          const data = await r.json();
+          photoInput.value = data.url;
+          drop.innerHTML = '✅ アップロード完了: <br><img src="' + data.url + '" style="max-width:120px;max-height:120px;border-radius:8px;margin-top:8px">';
+        } catch (e) {
+          drop.innerHTML = '❌ アップロード失敗（もう一度試してください）';
+          console.error(e);
+        }
+      }
+
+      drop.addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', e => uploadPhoto(e.target.files[0]));
+      drop.addEventListener('dragover', e => { e.preventDefault(); drop.style.background = '#e7f3ff'; });
+      drop.addEventListener('dragleave', () => { drop.style.background = '#fafafa'; });
+      drop.addEventListener('drop', e => {
+        e.preventDefault();
+        drop.style.background = '#fafafa';
+        uploadPhoto(e.dataTransfer.files[0]);
+      });
+
       $('#m-save').onclick = async () => {
         const payload = {
           id: a.id,

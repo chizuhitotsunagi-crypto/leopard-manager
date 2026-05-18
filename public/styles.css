@@ -220,6 +220,14 @@ label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px
 .no-feeding-state .checkbox-group,
 .no-feeding-state input.amount-input { opacity: .35; pointer-events: none; }
 
+/* 給餌トグル：on=給餌なし=無色／off=給餌あり=緑色付き（達成感） */
+.toggle.toggle-no-feeding.on {
+  background:#fff; border-color: var(--border); color: var(--ink); font-weight: normal;
+}
+.toggle.toggle-no-feeding:not(.on) {
+  background:#d1fae5; border-color: var(--good); color: var(--good); font-weight: 600;
+}
+
 /* ==== バッジ ==== */
 .badge {
   display: inline-block; padding: 2px 8px;

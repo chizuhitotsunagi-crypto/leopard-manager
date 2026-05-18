@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS daily_records (
   cleaning INTEGER NOT NULL DEFAULT 1,
   disinfection INTEGER NOT NULL DEFAULT 1,
   maintenance INTEGER NOT NULL DEFAULT 1,
+  shelter_wash INTEGER NOT NULL DEFAULT 0,
   count_status TEXT NOT NULL DEFAULT '変動なし',
   health_status TEXT NOT NULL DEFAULT '良好',
   cleaning_status TEXT NOT NULL DEFAULT '掃除済み',
@@ -59,6 +60,8 @@ CREATE TABLE IF NOT EXISTS daily_records (
   FOREIGN KEY (staff_id) REFERENCES staff(id)
 );
 CREATE INDEX IF NOT EXISTS idx_daily_date ON daily_records(record_date);
+-- 既存DBに対する列追加（既にあればエラーになるが applySchema が無視する）
+ALTER TABLE daily_records ADD COLUMN shelter_wash INTEGER NOT NULL DEFAULT 0;
 
 -- 個体別給餌・排泄記録
 CREATE TABLE IF NOT EXISTS feeding_records (

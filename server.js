@@ -3,6 +3,9 @@
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
+const crypto = require('crypto');
+const multer = require('multer');
 const cron = require('node-cron');
 
 const { initialize } = require('./lib/db');
@@ -23,7 +26,28 @@ app.get('/robots.txt', (req, res) => {
   res.type('text/plain').send('User-agent: *\nDisallow: /\n');
 });
 
+// アップロード先ディレクトリの確保＆静的配信
+const UPLOAD_DIR = path.join(__dirname, 'public', 'uploads');
+if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+
 app.use(express.static(path.join(__dirname, 'public')));
+
+// 画像アップロード設定（5MB制限）
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: UPLOAD_DIR,
+    filename: (req, file, cb) => {
+      const ext = (path.extname(file.originalname) || '.jpg').toLowerCase();
+      const safe = ['.jpg', '.jpeg', '.png', '.webp', '.gif'].includes(ext) ? ext : '.jpg';
+      const name = crypto.randomBytes(8).toString('hex') + '-' + Date.now() + safe;
+      cb(null, name);
+    },
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    cb(null, file.mimetype.startsWith('image/'));
+  },
+});
 
 // async handler ラッパー
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -45,6 +69,12 @@ app.post('/api/animals/:id/activate', wrap(async (req, res) => {
   await repo.activateAnimal(Number(req.params.id));
   res.json({ ok: true });
 }));
+
+// 写真アップロード
+app.post('/api/upload-photo', upload.single('file'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'ファイルがありません' });
+  res.json({ url: '/uploads/' + req.file.filename });
+});
 app.post('/api/animals/reorder', wrap(async (req, res) => {
   await repo.reorderAnimals(req.body.items || []);
   res.json({ ok: true });

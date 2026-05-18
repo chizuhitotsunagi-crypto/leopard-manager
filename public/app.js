@@ -178,6 +178,7 @@ async function loadRecord(date) {
     setToggle('cleaning', true);
     setToggle('disinfection', true);
     setToggle('maintenance', true);
+    setToggle('shelter_wash', false);
     setToggle('is_full_maintenance', false);
     $$('#animalGrid .animal-card').forEach(c => {
       c.classList.add('no-feeding-state');
@@ -201,6 +202,7 @@ async function loadRecord(date) {
   setToggle('cleaning', !!rec.cleaning);
   setToggle('disinfection', !!rec.disinfection);
   setToggle('maintenance', !!rec.maintenance);
+  setToggle('shelter_wash', !!rec.shelter_wash);
   setToggle('is_full_maintenance', !!rec.is_full_maintenance);
 
   // 個体別
@@ -276,6 +278,7 @@ function buildPayload() {
     cleaning: get('cleaning') ? 1 : 0,
     disinfection: get('disinfection') ? 1 : 0,
     maintenance: get('maintenance') ? 1 : 0,
+    shelter_wash: get('shelter_wash') ? 1 : 0,
     count_status: $('#countStatus').value,
     health_status: $('#healthStatus').value,
     cleaning_status: $('#cleaningStatus').value,
@@ -382,6 +385,7 @@ async function applyToFormFromRecord(rec) {
   setToggle('cleaning', !!rec.cleaning);
   setToggle('disinfection', !!rec.disinfection);
   setToggle('maintenance', !!rec.maintenance);
+  setToggle('shelter_wash', false); // シェルター洗いは引き継がない
   setToggle('is_full_maintenance', false); // フルメンテは引き継がない
 
   const feedingsByAnimal = new Map();
