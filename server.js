@@ -6,6 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const multer = require('multer');
+const sharp = require('sharp');
 const cron = require('node-cron');
 
 const { initialize } = require('./lib/db');
@@ -32,18 +33,10 @@ if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 画像アップロード設定（5MB制限）
+// 画像アップロード設定（受信時は最大20MB許可、サーバー側でリサイズ+JPEG圧縮）
 const upload = multer({
-  storage: multer.diskStorage({
-    destination: UPLOAD_DIR,
-    filename: (req, file, cb) => {
-      const ext = (path.extname(file.originalname) || '.jpg').toLowerCase();
-      const safe = ['.jpg', '.jpeg', '.png', '.webp', '.gif'].includes(ext) ? ext : '.jpg';
-      const name = crypto.randomBytes(8).toString('hex') + '-' + Date.now() + safe;
-      cb(null, name);
-    },
-  }),
-  limits: { fileSize: 5 * 1024 * 1024 },
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 20 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     cb(null, file.mimetype.startsWith('image/'));
   },
@@ -70,11 +63,23 @@ app.post('/api/animals/:id/activate', wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
-// 写真アップロード
-app.post('/api/upload-photo', upload.single('file'), (req, res) => {
+// 写真アップロード（sharpで最大1200pxにリサイズ＋JPEG85%圧縮）
+app.post('/api/upload-photo', upload.single('file'), wrap(async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'ファイルがありません' });
-  res.json({ url: '/uploads/' + req.file.filename });
-});
+  try {
+    const filename = crypto.randomBytes(8).toString('hex') + '-' + Date.now() + '.jpg';
+    const outPath = path.join(UPLOAD_DIR, filename);
+    await sharp(req.file.buffer)
+      .rotate() // EXIFの回転情報を反映
+      .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 85, mozjpeg: true })
+      .toFile(outPath);
+    res.json({ url: '/uploads/' + filename });
+  } catch (e) {
+    console.error('upload error:', e);
+    res.status(500).json({ error: '画像処理に失敗しました' });
+  }
+}));
 app.post('/api/animals/reorder', wrap(async (req, res) => {
   await repo.reorderAnimals(req.body.items || []);
   res.json({ ok: true });

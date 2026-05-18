@@ -198,7 +198,7 @@
               ${a.photo_url ? `<div style="margin-bottom:8px"><img src="${a.photo_url}" style="max-width:120px;max-height:120px;border-radius:8px;border:1px solid var(--border)"></div>` : ''}
               <div id="m-drop" style="border:2px dashed var(--border);border-radius:8px;padding:16px;text-align:center;color:var(--muted);cursor:pointer;background:#fafafa">
                 📁 ここに画像をドロップ、またはクリックして選択<br>
-                <span style="font-size:11px">（jpg/png/webp、5MB以下）</span>
+                <span style="font-size:11px">（jpg/png/webp、最大20MB／自動で圧縮されます）</span>
               </div>
               <input type="file" id="m-file" accept="image/*" style="display:none">
               <input type="text" id="m-photo" value="${a.photo_url || ''}" placeholder="https://... （直接URL入力もOK）" style="margin-top:8px">
@@ -226,8 +226,8 @@
       async function uploadPhoto(file) {
         if (!file) return;
         if (!file.type.startsWith('image/')) { alert('画像ファイルのみアップロードできます'); return; }
-        if (file.size > 5 * 1024 * 1024) { alert('5MB以下にしてください'); return; }
-        drop.innerHTML = '⏳ アップロード中...';
+        if (file.size > 20 * 1024 * 1024) { alert('20MB以下にしてください'); return; }
+        drop.innerHTML = '⏳ 圧縮&アップロード中...';
         try {
           const form = new FormData();
           form.append('file', file);
