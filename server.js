@@ -91,12 +91,28 @@ app.get('/api/foods', wrap(async (req, res) => {
 app.post('/api/foods', wrap(async (req, res) => {
   res.json({ id: await repo.upsertFood(req.body) });
 }));
+app.delete('/api/foods/:id', wrap(async (req, res) => {
+  await repo.deactivateFood(Number(req.params.id));
+  res.json({ ok: true });
+}));
+app.post('/api/foods/:id/activate', wrap(async (req, res) => {
+  await repo.activateFood(Number(req.params.id));
+  res.json({ ok: true });
+}));
 
 app.get('/api/staff', wrap(async (req, res) => {
   res.json(await repo.listStaff({ activeOnly: req.query.all !== '1' }));
 }));
 app.post('/api/staff', wrap(async (req, res) => {
   res.json({ id: await repo.upsertStaff(req.body) });
+}));
+app.delete('/api/staff/:id', wrap(async (req, res) => {
+  await repo.deactivateStaff(Number(req.params.id));
+  res.json({ ok: true });
+}));
+app.post('/api/staff/:id/activate', wrap(async (req, res) => {
+  await repo.activateStaff(Number(req.params.id));
+  res.json({ ok: true });
 }));
 
 // ================================================================

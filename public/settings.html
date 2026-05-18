@@ -89,10 +89,33 @@
     }
     function simpleRow(items, kind) {
       return items.map(it => `
-        <div class="list-row">
+        <div class="list-row" data-id="${it.id}" data-kind="${kind}">
           <span class="name">${it.name} ${it.active ? '' : '<span class="badge">無効</span>'}</span>
+          <button class="btn btn-ghost simple-toggle-active" data-id="${it.id}" data-kind="${kind}" data-active="${it.active ? 1 : 0}" data-name="${it.name}">
+            ${it.active ? '無効化' : '有効化'}
+          </button>
         </div>
       `).join('');
+    }
+
+    function bindSimpleToggles() {
+      document.querySelectorAll('.simple-toggle-active').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.dataset.id;
+          const kind = btn.dataset.kind; // 'foods' or 'staff'
+          const isActive = btn.dataset.active === '1';
+          const name = btn.dataset.name;
+          const kindLabel = kind === 'staff' ? '担当者' : '餌';
+          if (isActive) {
+            if (!confirm(`${kindLabel}「${name}」を無効化しますか？\n（過去の記録は残ります）`)) return;
+            await fetch(`/api/${kind}/${id}`, { method: 'DELETE' });
+          } else {
+            if (!confirm(`${kindLabel}「${name}」を有効化しますか？`)) return;
+            await fetch(`/api/${kind}/${id}/activate`, { method: 'POST' });
+          }
+          toast('変更しました'); loadAll();
+        });
+      });
     }
     function animalRow(a, index) {
       const sexClass = a.category === 'sale' ? 'cat-sale' : (a.sex === 'M' ? 'sex-M' : a.sex === 'F' ? 'sex-F' : '');
@@ -162,9 +185,10 @@
         });
       });
       const foods = await api('GET', '/api/foods?all=1');
-      $('#foodsList').innerHTML = simpleRow(foods);
+      $('#foodsList').innerHTML = simpleRow(foods, 'foods');
       const staff = await api('GET', '/api/staff?all=1');
-      $('#staffList').innerHTML = simpleRow(staff);
+      $('#staffList').innerHTML = simpleRow(staff, 'staff');
+      bindSimpleToggles();
     }
 
     function openEditModal(a) {
