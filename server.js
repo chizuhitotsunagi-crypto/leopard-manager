@@ -13,6 +13,28 @@ const { initialize } = require('./lib/db');
 const repo = require('./lib/repository');
 const alerts = require('./lib/alerts');
 
+// Cloudinary（画像永続化）
+// CLOUDINARY_URL があれば自動で設定される
+let cloudinary = null;
+if (process.env.CLOUDINARY_URL || process.env.CLOUDINARY_CLOUD_NAME) {
+  try {
+    cloudinary = require('cloudinary').v2;
+    if (process.env.CLOUDINARY_CLOUD_NAME) {
+      cloudinary.config({
+        cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+        api_key: process.env.CLOUDINARY_API_KEY,
+        api_secret: process.env.CLOUDINARY_API_SECRET,
+        secure: true,
+      });
+    }
+    console.log('[upload] Cloudinary 有効');
+  } catch (e) {
+    console.warn('[upload] Cloudinary パッケージ未インストール、ローカル保存にフォールバック');
+  }
+} else {
+  console.log('[upload] CLOUDINARY_URL 未設定、ローカル保存（Render再起動で消えます）');
+}
+
 const app = express();
 app.use(express.json({ limit: '2mb' }));
 
@@ -63,21 +85,37 @@ app.post('/api/animals/:id/activate', wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
-// 写真アップロード（sharpで最大1200pxにリサイズ＋JPEG85%圧縮）
+// 写真アップロード（Cloudinary優先、未設定ならローカル保存）
 app.post('/api/upload-photo', upload.single('file'), wrap(async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'ファイルがありません' });
   try {
-    const filename = crypto.randomBytes(8).toString('hex') + '-' + Date.now() + '.jpg';
-    const outPath = path.join(UPLOAD_DIR, filename);
-    await sharp(req.file.buffer)
-      .rotate() // EXIFの回転情報を反映
+    // まずsharpでリサイズ+JPEG圧縮
+    const buffer = await sharp(req.file.buffer)
+      .rotate()
       .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
       .jpeg({ quality: 85, mozjpeg: true })
-      .toFile(outPath);
-    res.json({ url: '/uploads/' + filename });
+      .toBuffer();
+
+    // Cloudinaryが有効ならアップロード
+    if (cloudinary) {
+      const result = await new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          { folder: 'leopard-manager', resource_type: 'image' },
+          (err, r) => (err ? reject(err) : resolve(r))
+        );
+        stream.end(buffer);
+      });
+      return res.json({ url: result.secure_url, storage: 'cloudinary' });
+    }
+
+    // フォールバック: ローカル保存
+    const filename = crypto.randomBytes(8).toString('hex') + '-' + Date.now() + '.jpg';
+    const outPath = path.join(UPLOAD_DIR, filename);
+    await sharp(buffer).toFile(outPath);
+    res.json({ url: '/uploads/' + filename, storage: 'local', warning: 'Render再起動で消える可能性があります。Cloudinaryの設定を推奨します。' });
   } catch (e) {
     console.error('upload error:', e);
-    res.status(500).json({ error: '画像処理に失敗しました' });
+    res.status(500).json({ error: '画像処理に失敗しました: ' + e.message });
   }
 }));
 app.post('/api/animals/reorder', wrap(async (req, res) => {
@@ -274,7 +312,7 @@ app.use((err, req, res, next) => {
 // 内蔵スケジューラ
 // ================================================================
 const morning = process.env.NOTIFY_MORNING_CRON || '0 9 * * *';
-const evening = process.env.NOTIFY_EVENING_CRON || '0 20 * * *';
+const evening = process.env.NOTIFY_EVENING_CRON || '0 18 * * *';
 function scheduleNotifications() {
   if (cron.validate(morning)) {
     cron.schedule(morning, async () => {

@@ -90,9 +90,17 @@
 
     <!-- 個体ごと -->
     <div class="card">
-      <h3>個体ごとの記録
-        <button class="btn btn-soft" id="markAllNoFeeding" style="margin-left:auto">全個体「給餌なし」</button>
-      </h3>
+      <h3>個体ごとの記録</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;padding:10px;background:var(--bg);border-radius:8px">
+        <strong style="align-self:center;font-size:13px">一括操作：</strong>
+        <button class="btn btn-soft" id="markAllNoFeeding">全個体「給餌なし」</button>
+        <button class="btn btn-soft" id="markAllFed">全個体「給餌あり」</button>
+        <select id="bulkFoodSelect" style="max-width:160px">
+          <option value="">餌の種類を選択...</option>
+        </select>
+        <button class="btn btn-soft" id="applyBulkFood">この餌を一括適用</button>
+        <button class="btn btn-soft" id="markAllNoPoop">糞なし（一括）</button>
+      </div>
       <div id="animalGrid" class="animal-grid"></div>
     </div>
 

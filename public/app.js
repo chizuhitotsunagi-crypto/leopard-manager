@@ -17,8 +17,12 @@ function nowHhmm() {
   const d = new Date();
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
-function showToast(text, ms = 1800) {
-  const t = $('#toast'); t.textContent = text; t.classList.add('show');
+function showToast(text, ms = 1800, kind = '') {
+  const t = $('#toast');
+  t.textContent = text;
+  t.classList.remove('success', 'error');
+  if (kind) t.classList.add(kind);
+  t.classList.add('show');
   clearTimeout(showToast._t);
   showToast._t = setTimeout(() => t.classList.remove('show'), ms);
 }
@@ -48,6 +52,13 @@ async function loadMasters() {
   const sel = $('#staffId');
   sel.innerHTML = '<option value="">選択...</option>' +
     state.staff.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+
+  // 一括餌セレクト
+  const bulk = $('#bulkFoodSelect');
+  if (bulk) {
+    bulk.innerHTML = '<option value="">餌の種類を選択...</option>' +
+      state.foods.map(f => `<option value="${f.id}">${f.name}</option>`).join('');
+  }
 }
 
 // ===== 個体グリッド描画 =====
@@ -348,6 +359,44 @@ function bindEvents() {
     showToast('全個体を「給餌なし」に設定');
   });
 
+  // 全個体「給餌あり」
+  $('#markAllFed').addEventListener('click', () => {
+    $$('#animalGrid .animal-card').forEach(card => {
+      card.classList.remove('no-feeding-state');
+      const tg = card.querySelector('.toggle-no-feeding');
+      tg.classList.remove('on');
+      tg.textContent = '給餌あり';
+    });
+    showToast('全個体を「給餌あり」に設定（餌の種類は別途選択）');
+  });
+
+  // 餌の種類を一括適用
+  $('#applyBulkFood').addEventListener('click', () => {
+    const foodId = $('#bulkFoodSelect').value;
+    if (!foodId) { showToast('餌の種類を選択してください'); return; }
+    $$('#animalGrid .animal-card').forEach(card => {
+      // 給餌ありに切替
+      card.classList.remove('no-feeding-state');
+      const tg = card.querySelector('.toggle-no-feeding');
+      tg.classList.remove('on');
+      tg.textContent = '給餌あり';
+      // 該当餌だけ ON にする
+      card.querySelectorAll('.checkbox-pill').forEach(pill => {
+        pill.classList.toggle('on', pill.dataset.foodId === foodId);
+      });
+    });
+    const foodName = state.foods.find(f => String(f.id) === String(foodId))?.name || '';
+    showToast(`全個体に「${foodName}」を適用`);
+  });
+
+  // 糞なし（一括）
+  $('#markAllNoPoop').addEventListener('click', () => {
+    $$('#animalGrid .animal-card').forEach(card => {
+      card.querySelector('.poop-input').value = 'なし';
+    });
+    showToast('全個体の糞を「なし」に設定（個別に変更可）');
+  });
+
   // 前日コピー
   $('#copyPrev').addEventListener('click', async () => {
     const date = $('#recordDate').value;
@@ -361,15 +410,22 @@ function bindEvents() {
   });
 
   $('#save').addEventListener('click', async () => {
+    const saveBtn = $('#save');
+    const originalText = saveBtn.textContent;
+    saveBtn.disabled = true;
+    saveBtn.textContent = '保存中...';
     try {
       const payload = buildPayload();
       await api('POST', '/api/records', payload);
-      showToast('保存しました');
+      showToast('✅ 保存されました', 2200, 'success');
       await loadRecord(payload.record_date);
       await loadAlerts();
     } catch (e) {
       console.error(e);
-      alert('保存失敗: ' + e.message);
+      showToast('❌ 保存失敗: ' + e.message, 3000, 'error');
+    } finally {
+      saveBtn.disabled = false;
+      saveBtn.textContent = originalText;
     }
   });
 }

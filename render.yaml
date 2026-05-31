@@ -23,4 +23,10 @@ services:
       - key: NOTIFY_MORNING_CRON
         value: "0 9 * * *"
       - key: NOTIFY_EVENING_CRON
-        value: "0 20 * * *"
+        value: "0 18 * * *"
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false      # Cloudinary 管理画面で取得
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false

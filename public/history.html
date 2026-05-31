@@ -74,6 +74,7 @@
           <tr>
             <th>日付</th><th>時間</th><th>担当</th>
             <th>清掃</th><th>消毒</th><th>点検</th>
+            <th>シェルター洗</th><th>フルメンテ</th>
             <th>数</th><th>状態</th><th>給餌個体数</th><th>備考</th>
           </tr>
         </thead>
@@ -151,13 +152,15 @@
     }
     function renderTable(rows) {
       $('#historyBody').innerHTML = rows.map(r => `
-        <tr>
+        <tr${r.is_full_maintenance ? ' style="background:#fffbe6"' : ''}>
           <td><a href="/?date=${r.record_date}">${r.record_date}</a></td>
           <td>${r.record_time || ''}</td>
           <td>${r.staff_name || ''}</td>
           <td>${r.cleaning ? '⚪︎' : '×'}</td>
           <td>${r.disinfection ? '⚪︎' : '×'}</td>
           <td>${r.maintenance ? '⚪︎' : '×'}</td>
+          <td style="text-align:center">${r.shelter_wash ? '🧼' : ''}</td>
+          <td style="text-align:center">${r.is_full_maintenance ? '🌟' : ''}</td>
           <td>${r.count_status || ''}</td>
           <td>${r.health_status || ''}</td>
           <td>${r.fed_count}</td>

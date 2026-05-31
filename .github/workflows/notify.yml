@@ -1,10 +1,10 @@
 name: Scheduled Notifications
 
-# JST 9:00 → UTC 0:00、JST 20:00 → UTC 11:00
+# JST 9:00 → UTC 0:00、JST 18:00 → UTC 9:00
 on:
   schedule:
     - cron: '0 0 * * *'   # 朝9時JST: 1週間給餌なし警告
-    - cron: '0 11 * * *'  # 夜20時JST: 記入漏れ警告
+    - cron: '0 9 * * *'   # 夕方18時JST: 記入漏れ警告
   workflow_dispatch:       # 手動実行も可能
 
 jobs:
