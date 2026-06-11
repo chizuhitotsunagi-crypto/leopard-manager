@@ -125,11 +125,11 @@
       ],
     };
 
-    // カタカナ→ひらがな + 空白除去（名前のゆらぎ吸収）
+    // カタカナ→ひらがな + 空白・♂♀マーク除去（名前のゆらぎ吸収）
     function norm(s) {
       return (s || '')
         .replace(/[ァ-ヶ]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60))
-        .replace(/\s+/g, '');
+        .replace(/[♂♀\s]+/g, '');
     }
 
     function sexMark(sex) {
