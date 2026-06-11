@@ -10,29 +10,57 @@
     .map-toolbar { display:flex; gap:8px; align-items:center; margin-bottom:16px; flex-wrap:wrap; }
     .map-note { color:var(--muted); font-size:12px; }
 
-    .rack { max-width: 1100px; margin: 0 auto; }
-    .rack-row-label {
-      font-size:13px; font-weight:600; color:var(--muted);
-      margin: 16px 4px 8px;
+    /* ==== 全体図（部屋を正面から見た配置） ==== */
+    .room {
+      display:grid; grid-template-columns: 2fr 3fr; gap:18px;
+      max-width:1100px; margin:0 auto 28px;
     }
+    @media (max-width: 800px) { .room { grid-template-columns: 1fr; } }
+    .zone {
+      border:2px solid var(--border); border-radius:14px;
+      padding:14px; background:var(--card);
+    }
+    .zone-title {
+      font-size:13px; font-weight:700; margin-bottom:10px;
+      display:flex; align-items:center; gap:6px; color:var(--muted);
+    }
+    .zone-grid { display:grid; gap:8px; }
+    .zone-grid.cols2 { grid-template-columns:1fr 1fr; }
+    .zone-grid.cols3 { grid-template-columns:1fr 1fr 1fr; }
+    .zone-row-label { font-size:11px; color:var(--muted); margin:8px 2px 4px; }
+
+    .cell {
+      border:1px solid var(--border); border-radius:10px;
+      padding:6px; text-align:center; background:#fff;
+      display:flex; flex-direction:column; gap:4px; align-items:center;
+    }
+    .cell.empty { border-style:dashed; background:transparent; }
+    .cell.black-case { border-width:2px; border-color:#333; }
+    .cell .ph {
+      width:100%; aspect-ratio: 4/3; border-radius:6px; overflow:hidden;
+      background:var(--bg); display:flex; align-items:center; justify-content:center;
+      font-size:22px; color:var(--muted);
+    }
+    .cell .ph img { width:100%; height:100%; object-fit:cover; display:block; }
+    .cell .cn { font-size:13px; font-weight:700; line-height:1.2; }
+    .cell .cp { font-size:10px; color:var(--muted); }
+    .cell.sm .ph { aspect-ratio: 16/9; }
+    .cell.sm .cn { font-size:12px; }
+
+    /* ==== 詳細カード ==== */
+    .rack { max-width: 1100px; margin: 0 auto; }
+    .rack-row-label { font-size:13px; font-weight:600; color:var(--muted); margin: 16px 4px 8px; }
     .rack-row { display:grid; grid-template-columns: repeat(3, 1fr); gap:14px; }
     @media (max-width: 700px) { .rack-row { grid-template-columns: 1fr; } }
 
     .slot {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 12px;
-      display: flex; flex-direction: column; gap: 8px;
+      background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+      padding: 12px; display: flex; flex-direction: column; gap: 8px;
     }
     .slot.empty { border-style: dashed; background: transparent; }
-    .slot-pos {
-      font-size: 12px; color: var(--muted); font-weight: 600;
-      display:flex; align-items:center; gap:6px;
-    }
+    .slot-pos { font-size: 12px; color: var(--muted); font-weight: 600; display:flex; align-items:center; gap:6px; }
     .slot-photo {
-      width: 100%; aspect-ratio: 4 / 3; border-radius: 8px;
-      background: var(--bg);
+      width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; background: var(--bg);
       display:flex; align-items:center; justify-content:center;
       overflow:hidden; font-size: 40px; color: var(--muted);
     }
@@ -46,17 +74,12 @@
     @media (max-width: 700px) { .table-cols { grid-template-columns: 1fr; } }
     .col-label { font-size:12px; color:var(--muted); margin: 0 4px 6px; }
     .slot-sm {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 8px 10px;
-      margin-bottom: 8px;
-      display:flex; align-items:center; gap:10px;
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 8px 10px; margin-bottom: 8px; display:flex; align-items:center; gap:10px;
     }
     .slot-sm.black-case { border-width:2px; border-color:#333; }
     .slot-sm .thumb {
-      width: 48px; height: 48px; border-radius: 8px; flex:none;
-      background: var(--bg);
+      width: 48px; height: 48px; border-radius: 8px; flex:none; background: var(--bg);
       display:flex; align-items:center; justify-content:center;
       overflow:hidden; font-size:22px; color:var(--muted);
     }
@@ -67,7 +90,7 @@
     @media print {
       header.appbar, .map-toolbar { display:none !important; }
       body { background:#fff; }
-      .slot { break-inside: avoid; }
+      .slot, .zone, .cell { break-inside: avoid; }
       main { padding: 0; }
     }
   </style>
@@ -89,9 +112,27 @@
 
     <div class="map-toolbar">
       <button class="btn btn-primary" id="printBtn">🖨 印刷する</button>
-      <span class="map-note">ケージの実際の並びと同じレイアウトです（2026年6月時点）。写真・モルフは個体マスタから自動表示されます。</span>
+      <span class="map-note">部屋を正面から見た配置です（2026年6月時点）。写真・モルフは個体マスタから自動表示されます。</span>
     </div>
 
+    <!-- ==== 全体図 ==== -->
+    <h3 style="max-width:1100px;margin:0 auto 10px;">全体図</h3>
+    <div class="room">
+      <div class="zone">
+        <div class="zone-title">⬜ 白いテーブル（販売個体・左側）</div>
+        <div class="zone-grid cols2" id="zoneTable"></div>
+      </div>
+      <div class="zone">
+        <div class="zone-title">🪵 木の棚（名前付き個体・右側）</div>
+        <div class="zone-row-label">上段（棚の上）</div>
+        <div class="zone-grid cols3" id="zoneBack"></div>
+        <div class="zone-row-label">前列（手前）</div>
+        <div class="zone-grid cols3" id="zoneFront"></div>
+      </div>
+    </div>
+
+    <!-- ==== 詳細 ==== -->
+    <h3 style="max-width:1100px;margin:0 auto;">詳細</h3>
     <div class="rack">
       <div class="rack-row-label">上段（棚の上）</div>
       <div class="rack-row" id="rowBack"></div>
@@ -118,13 +159,24 @@
     // ==== 配置定義（変更時はここを書き換える） ====
     // name: 個体マスタの名前と一致させると写真・モルフが自動表示される。空きは null
     const SLOTS = [
-      { row: 'rowBack',  label: '左奥（黒い背高ケージ）', name: null },
-      { row: 'rowBack',  label: '上段中央（植物ケージ）', name: 'アリストテレス' },
-      { row: 'rowBack',  label: '右奥（温湿度計付き）',   name: null },
-      { row: 'rowFront', label: '前列・左',               name: 'ノブナガ' },
-      { row: 'rowFront', label: '前列・中央',             name: 'アレク' },
-      { row: 'rowFront', label: '前列・右',               name: 'もみじ' },
+      { row: 'rowBack',  zone: 'zoneBack',  label: '左奥（黒い背高ケージ）', name: null },
+      { row: 'rowBack',  zone: 'zoneBack',  label: '上段中央（植物ケージ）', name: 'アリストテレス' },
+      { row: 'rowBack',  zone: 'zoneBack',  label: '右奥（温湿度計付き）',   name: null },
+      { row: 'rowFront', zone: 'zoneFront', label: '前列・左',               name: 'ノブナガ' },
+      { row: 'rowFront', zone: 'zoneFront', label: '前列・中央',             name: 'アレク' },
+      { row: 'rowFront', zone: 'zoneFront', label: '前列・右',               name: 'もみじ' },
     ];
+
+    // 左の白いテーブル：販売個体ケースの並び（奥 → 手前）
+    const TABLE_COLS = {
+      colLeft:  [
+        { name: '①' }, { name: '②' }, { name: '③' }, { name: '④' },
+        { name: '11', note: '黒ケース（最前列）', black: true },
+      ],
+      colRight: [
+        { name: '⑩' }, { name: '⑨' }, { name: '⑧' }, { name: '⑦' }, { name: '⑥' },
+      ],
+    };
 
     // カタカナ→ひらがな + 空白除去（名前のゆらぎ吸収）
     function norm(s) {
@@ -144,31 +196,54 @@
         ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
     }
 
-    // 左の白いテーブル：販売個体ケースの並び（奥 → 手前）
-    const TABLE_COLS = {
-      colLeft:  [
-        { name: '①' }, { name: '②' }, { name: '③' }, { name: '④' },
-        { name: '11', note: '黒ケース（最前列）', black: true },
-      ],
-      colRight: [
-        { name: '⑩' }, { name: '⑨' }, { name: '⑧' }, { name: '⑦' }, { name: '⑥' },
-      ],
-    };
+    function findAnimal(animals, name) {
+      return animals.find(x => norm(x.name) === norm(name)) || null;
+    }
+
+    function photoHtml(a) {
+      return a && a.photo_url ? `<img src="${esc(a.photo_url)}" alt="${esc(a.name)}" loading="lazy">` : '🦎';
+    }
 
     function render(animals) {
+      // ---- 全体図 ----
+      // 木の棚（上段・前列）
+      document.getElementById('zoneBack').innerHTML = '';
+      document.getElementById('zoneFront').innerHTML = '';
+      for (const slot of SLOTS) {
+        const a = slot.name ? (findAnimal(animals, slot.name) || { name: slot.name }) : null;
+        const div = document.createElement('div');
+        div.className = 'cell' + (a ? '' : ' empty');
+        div.innerHTML = a
+          ? `<div class="ph">${photoHtml(a)}</div><div class="cn">${esc(a.name)}${sexMark(a.sex)}</div>`
+          : `<div class="ph">―</div><div class="cn" style="color:var(--muted);font-weight:400">空き</div>`;
+        document.getElementById(slot.zone).appendChild(div);
+      }
+      // 白いテーブル（2列：左列・右列を横並びで、奥→手前の順に下へ）
+      const zt = document.getElementById('zoneTable');
+      zt.innerHTML = '';
+      const maxLen = Math.max(TABLE_COLS.colLeft.length, TABLE_COLS.colRight.length);
+      for (let i = 0; i < maxLen; i++) {
+        for (const colName of ['colLeft', 'colRight']) {
+          const c = TABLE_COLS[colName][i];
+          const div = document.createElement('div');
+          if (!c) { div.className = 'cell sm empty'; div.innerHTML = ''; zt.appendChild(div); continue; }
+          const a = findAnimal(animals, c.name) || { name: c.name };
+          div.className = 'cell sm' + (c.black ? ' black-case' : '');
+          div.innerHTML = `<div class="ph">${photoHtml(a)}</div><div class="cn">${esc(a.name)}</div><div class="cp">${i === 0 ? '奥' : (c.note ? '手前・黒' : '')}</div>`;
+          zt.appendChild(div);
+        }
+      }
+
+      // ---- 詳細カード ----
       document.getElementById('rowBack').innerHTML = '';
       document.getElementById('rowFront').innerHTML = '';
-
       for (const slot of SLOTS) {
-        const a = slot.name
-          ? animals.find(x => norm(x.name) === norm(slot.name)) || { name: slot.name }
-          : null;
-
+        const a = slot.name ? (findAnimal(animals, slot.name) || { name: slot.name }) : null;
         const div = document.createElement('div');
         div.className = 'slot' + (a ? '' : ' empty');
         div.innerHTML = `
           <div class="slot-pos">📍 ${esc(slot.label)}</div>
-          <div class="slot-photo">${a && a.photo_url ? `<img src="${esc(a.photo_url)}" alt="${esc(a.name)}">` : '🦎'}</div>
+          <div class="slot-photo">${photoHtml(a)}</div>
           <div class="slot-name">${a ? esc(a.name) + sexMark(a.sex) : '<span style="color:var(--muted);font-size:14px;font-weight:400">空き</span>'}</div>
           <div class="slot-meta">${a ? esc(a.morph || '') : ''}</div>
         `;
@@ -179,11 +254,11 @@
         const col = document.getElementById(colId);
         col.innerHTML = '';
         cases.forEach((c, i) => {
-          const a = animals.find(x => norm(x.name) === norm(c.name)) || { name: c.name };
+          const a = findAnimal(animals, c.name) || { name: c.name };
           const div = document.createElement('div');
           div.className = 'slot-sm' + (c.black ? ' black-case' : '');
           div.innerHTML = `
-            <div class="thumb">${a.photo_url ? `<img src="${esc(a.photo_url)}" alt="${esc(a.name)}">` : '🦎'}</div>
+            <div class="thumb">${photoHtml(a)}</div>
             <div>
               <div class="nm">${esc(a.name)}${sexMark(a.sex)}</div>
               <div class="mt">${esc(c.note || '奥から' + (i + 1) + '番目')}${a.morph ? '・' + esc(a.morph) : ''}</div>
