@@ -68,12 +68,15 @@ function renderAnimalGrid() {
   const grid = $('#animalGrid');
   grid.innerHTML = state.animals.map(a => animalCardHtml(a)).join('');
 
-  // ドラッグ＆ドロップで並び替え
+  // ドラッグ＆ドロップで並び替え（ハンドルだけドラッグ可能に。スマホで誤動作させない）
   if (window.Sortable) {
     Sortable.create(grid, {
       animation: 150,
-      handle: '.animal-card',
+      handle: '.card-drag-handle',
       ghostClass: 'dragging',
+      delayOnTouchOnly: true,
+      delay: 200, // タッチ200ms以上長押しでドラッグ開始（スクロールと両立）
+      touchStartThreshold: 5,
       onEnd: async () => {
         const items = Array.from(grid.querySelectorAll('.animal-card'))
           .map((el, i) => ({ id: Number(el.dataset.id), display_order: i + 1 }));
@@ -138,7 +141,8 @@ function animalCardHtml(a) {
   ).join('');
 
   return `
-  <div class="animal-card no-feeding-state drag-handle-area ${sexClass}" data-id="${a.id}">
+  <div class="animal-card no-feeding-state ${sexClass}" data-id="${a.id}">
+    <span class="card-drag-handle" title="長押しして並び替え">⋮⋮</span>
     <div class="head">
       ${photo}
       <div class="name-block">

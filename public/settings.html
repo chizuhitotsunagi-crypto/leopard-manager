@@ -152,6 +152,9 @@
         $('#animalsList')._sortable = new Sortable($('#animalsList'), {
           handle: '.drag-handle',
           animation: 150,
+          delayOnTouchOnly: true,
+          delay: 200,
+          touchStartThreshold: 5,
           onEnd: async () => {
             renumberRows();
             const items = Array.from($('#animalsList').querySelectorAll('.list-row')).map((row, i) => ({
