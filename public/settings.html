@@ -127,7 +127,7 @@
           <span class="row-num" style="min-width:32px;color:var(--muted);font-size:12px;text-align:right">#${index + 1}</span>
           ${a.photo_url ? `<img src="${a.photo_url}" style="width:40px;height:40px;border-radius:6px;object-fit:cover" onerror="this.style.display='none'">` : '<div style="width:40px;height:40px;background:var(--bg);border-radius:6px"></div>'}
           <span class="name" style="display:flex;flex-direction:column">
-            <strong style="${a.category === 'sale' ? 'font-size:22px;letter-spacing:0.5px' : ''}">${a.name} <span style="font-size:11px;color:var(--muted);font-weight:normal">${sexBadge} / ${a.category === 'sale' ? '販売個体' : '名前付き'}</span></strong>
+            <strong style="${a.category === 'sale' ? 'font-size:24px;font-weight:500;letter-spacing:1px;font-family:\'Hiragino Sans\',\'Yu Gothic\',sans-serif' : ''}">${a.name} <span style="font-size:11px;color:var(--muted);font-weight:normal;letter-spacing:normal">${sexBadge} / ${a.category === 'sale' ? '販売個体' : '名前付き'}</span></strong>
             <span style="font-size:11px;color:var(--muted)">${a.morph || 'モルフ未設定'}</span>
           </span>
           <button class="btn btn-soft" data-edit="${a.id}">編集</button>
