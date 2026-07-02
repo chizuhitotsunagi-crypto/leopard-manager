@@ -172,14 +172,19 @@ label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px
   font-weight: 600; font-size: 15px;
   display: flex; align-items: center; gap: 6px;
 }
-/* 販売個体の番号名を大きく表示（丸文字①や数字11も見やすく）
-   丸文字は太字だと潰れるので、太字はやめてサイズだけ大きく＆読みやすいフォント指定 */
+/* 販売個体の番号名を大きく表示（丸文字①〜⑳や数字11も見やすく）
+   ⑩（U+246A）の見た目に合わせるため、日本語ゴシック系を最優先＋太字なしにする */
 .animal-card.cat-sale .name {
   font-size: 28px;
-  font-weight: 500;
+  font-weight: 400;   /* 太字なし（⑩の描画品質に合わせる） */
   letter-spacing: 1px;
-  font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", "Segoe UI", system-ui, sans-serif;
+  font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", "YuGothic", "Noto Sans CJK JP", "Meiryo", sans-serif;
   line-height: 1.2;
+  color: #000; /* 少し濃くして薄く見えないように */
+}
+/* 丸付き数字はさらに大きく（フォント側の描画差を吸収するため統一） */
+.animal-card.cat-sale .name {
+  font-feature-settings: "palt" 1;
 }
 .animal-card .name .sex-badge {
   font-size: 12px; font-weight: 700;
