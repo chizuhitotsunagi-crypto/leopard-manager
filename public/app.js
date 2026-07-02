@@ -372,15 +372,22 @@ function bindEvents() {
     showToast('全個体を「給餌なし」に設定');
   });
 
-  // 全個体「給餌あり」
+  // 全個体「給餌あり」（イエコをデフォルト選択）
   $('#markAllFed').addEventListener('click', () => {
     $$('#animalGrid .animal-card').forEach(card => {
       card.classList.remove('no-feeding-state');
       const tg = card.querySelector('.toggle-no-feeding');
       tg.classList.remove('on');
       tg.textContent = '給餌あり';
+      // まだ何も選ばれていなければ「イエコ」を自動選択
+      const anySelected = card.querySelector('.checkbox-pill.on');
+      if (!anySelected) {
+        const iekoPill = Array.from(card.querySelectorAll('.checkbox-pill'))
+          .find(p => (p.textContent || '').trim() === 'イエコ');
+        if (iekoPill) iekoPill.classList.add('on');
+      }
     });
-    showToast('全個体を「給餌あり」に設定（餌の種類は別途選択）');
+    showToast('全個体を「給餌あり」に設定（デフォルト：イエコ）');
   });
 
   // 餌の種類を一括適用
