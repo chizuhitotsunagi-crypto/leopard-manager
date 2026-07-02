@@ -311,19 +311,33 @@ app.use((err, req, res, next) => {
 // ================================================================
 // 内蔵スケジューラ
 // ================================================================
-const morning = process.env.NOTIFY_MORNING_CRON || '0 9 * * *';
-const evening = process.env.NOTIFY_EVENING_CRON || '0 18 * * *';
+const morning = process.env.NOTIFY_MORNING_CRON || '0 9 * * *';        // 摂食アラート
+const evening = process.env.NOTIFY_EVENING_CRON || '0 18 * * *';       // 記入漏れ（当日）
+const nextNoon = process.env.NOTIFY_MISSING_NEXT_CRON || '0 12 * * *'; // 記入漏れ（前日分の再通知）
+
 function scheduleNotifications() {
+  // 朝：摂食アラート（7日給餌なし）
   if (cron.validate(morning)) {
     cron.schedule(morning, async () => {
       try { await alerts.checkLongTermFoodAlerts(); }
       catch (e) { console.error(e); }
     }, { timezone: 'Asia/Tokyo' });
   }
+  // 夕方18時：当日の記入漏れリマインド
   if (cron.validate(evening)) {
     cron.schedule(evening, async () => {
       try { await alerts.checkMissingRecords(); }
       catch (e) { console.error(e); }
+    }, { timezone: 'Asia/Tokyo' });
+  }
+  // 翌日12時：前日分の記入漏れリマインド
+  if (cron.validate(nextNoon)) {
+    cron.schedule(nextNoon, async () => {
+      try {
+        const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
+          .toISOString().slice(0, 10);
+        await alerts.checkMissingRecords({ asOfDate: yesterday });
+      } catch (e) { console.error(e); }
     }, { timezone: 'Asia/Tokyo' });
   }
 }
@@ -334,8 +348,9 @@ const PORT = process.env.PORT || 3000;
     await initialize();
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`🦎 Leopard Manager 起動: http://localhost:${PORT}`);
-      console.log(`   通知（朝）: ${morning}`);
-      console.log(`   通知（夜）: ${evening}`);
+      console.log(`   通知（朝・摂食）: ${morning}`);
+      console.log(`   通知（当日18時・記入漏れ）: ${evening}`);
+      console.log(`   通知（翌日12時・記入漏れ）: ${nextNoon}`);
       scheduleNotifications();
     });
   } catch (e) {

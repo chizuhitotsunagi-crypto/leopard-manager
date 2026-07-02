@@ -62,7 +62,7 @@ async function loadMasters() {
 }
 
 // ===== 個体グリッド描画 =====
-const POOP_OPTIONS = ['', 'なし', '1', '2', '3', '4以上', '異常（要確認）'];
+const POOP_OPTIONS = ['なし', '1', '2', '3', '4以上', '異常（要確認）'];
 
 function renderAnimalGrid() {
   const grid = $('#animalGrid');
@@ -99,6 +99,15 @@ function renderAnimalGrid() {
       const cur = toggle.classList.toggle('on');
       card.classList.toggle('no-feeding-state', cur);
       toggle.textContent = cur ? '給餌なし' : '給餌あり';
+      // 「給餌あり」に切り替えた時、まだ何も選んでいなければ「イエコ」を自動選択
+      if (!cur) {
+        const anySelected = card.querySelector('.checkbox-pill.on');
+        if (!anySelected) {
+          const iekoPill = Array.from(card.querySelectorAll('.checkbox-pill'))
+            .find(p => (p.textContent || '').trim() === 'イエコ');
+          if (iekoPill) iekoPill.classList.add('on');
+        }
+      }
     });
     // 餌チェックボックス
     card.querySelectorAll('.checkbox-pill').forEach(pill => {
@@ -201,7 +210,7 @@ async function loadRecord(date) {
       c.querySelector('.toggle-no-feeding').textContent = '給餌なし';
       c.querySelectorAll('.checkbox-pill.on').forEach(p => p.classList.remove('on'));
       c.querySelector('.amount-input').value = '';
-      c.querySelector('.poop-input').value = '';
+      c.querySelector('.poop-input').value = 'なし';
       c.querySelector('.animal-notes').value = '';
     });
     return;
@@ -233,7 +242,7 @@ async function loadRecord(date) {
       card.querySelector('.toggle-no-feeding').textContent = '給餌なし';
       card.querySelectorAll('.checkbox-pill.on').forEach(p => p.classList.remove('on'));
       card.querySelector('.amount-input').value = '';
-      card.querySelector('.poop-input').value = '';
+      card.querySelector('.poop-input').value = 'なし';
       card.querySelector('.animal-notes').value = '';
       return;
     }
@@ -242,7 +251,7 @@ async function loadRecord(date) {
     card.querySelector('.toggle-no-feeding').classList.toggle('on', isNo);
     card.querySelector('.toggle-no-feeding').textContent = isNo ? '給餌なし' : '給餌あり';
     card.querySelector('.amount-input').value = f.amount || '';
-    card.querySelector('.poop-input').value = f.poop || '';
+    card.querySelector('.poop-input').value = f.poop || 'なし';
     card.querySelector('.animal-notes').value = f.notes || '';
     const foodIds = (f.foods || []).map(x => x.food_id);
     card.querySelectorAll('.checkbox-pill').forEach(pill => {
@@ -459,7 +468,7 @@ async function applyToFormFromRecord(rec) {
     card.querySelector('.toggle-no-feeding').classList.toggle('on', isNo);
     card.querySelector('.toggle-no-feeding').textContent = isNo ? '給餌なし' : '給餌あり';
     card.querySelector('.amount-input').value = f.amount || '';
-    card.querySelector('.poop-input').value = f.poop || '';
+    card.querySelector('.poop-input').value = f.poop || 'なし';
     card.querySelector('.animal-notes').value = f.notes || '';
     const foodIds = (f.foods || []).map(x => x.food_id);
     card.querySelectorAll('.checkbox-pill').forEach(pill => {

@@ -21,9 +21,11 @@ services:
       - key: NOTIFY_ENABLED
         value: "true"
       - key: NOTIFY_MORNING_CRON
-        value: "0 9 * * *"
+        value: "0 9 * * *"       # 朝9時：摂食アラート
       - key: NOTIFY_EVENING_CRON
-        value: "0 18 * * *"
+        value: "0 18 * * *"      # 18時：当日の記入漏れリマインド
+      - key: NOTIFY_MISSING_NEXT_CRON
+        value: "0 12 * * *"      # 翌日12時：前日分の記入漏れ再リマインド
       - key: CLOUDINARY_CLOUD_NAME
         sync: false      # Cloudinary 管理画面で取得
       - key: CLOUDINARY_API_KEY
