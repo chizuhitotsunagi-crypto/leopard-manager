@@ -413,20 +413,23 @@ function bindEvents() {
 
   // 餌の種類を一括適用
   $('#applyBulkFood').addEventListener('click', () => {
-    const foodId = $('#bulkFoodSelect').value;
-    if (!foodId) { showToast('餌の種類を選択してください'); return; }
+    const rawFoodId = $('#bulkFoodSelect').value;
+    if (!rawFoodId) { showToast('餌の種類を選択してください'); return; }
+    const targetFoodId = String(rawFoodId);
     $$('#animalGrid .animal-card').forEach(card => {
       // 給餌ありに切替
       card.classList.remove('no-feeding-state');
       const tg = card.querySelector('.toggle-no-feeding');
       tg.classList.remove('on');
       tg.textContent = '給餌あり';
-      // 該当餌だけ ON にする
+      // 一括なので既存の選択をすべてクリアしてから対象だけ ON
       card.querySelectorAll('.checkbox-pill').forEach(pill => {
-        pill.classList.toggle('on', pill.dataset.foodId === foodId);
+        pill.classList.remove('on');
       });
+      const targetPill = card.querySelector(`.checkbox-pill[data-food-id="${targetFoodId}"]`);
+      if (targetPill) targetPill.classList.add('on');
     });
-    const foodName = state.foods.find(f => String(f.id) === String(foodId))?.name || '';
+    const foodName = state.foods.find(f => String(f.id) === targetFoodId)?.name || '';
     showToast(`全個体に「${foodName}」を適用`);
   });
 
