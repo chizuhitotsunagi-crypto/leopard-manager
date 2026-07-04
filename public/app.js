@@ -384,15 +384,28 @@ function bindEvents() {
     showToast('全個体を「給餌なし」に設定');
   });
 
-  // 全個体「給餌あり」
+  // 全個体「給餌あり」（プルダウンで餌が選ばれていれば同時に反映）
   $('#markAllFed').addEventListener('click', () => {
+    const rawFoodId = $('#bulkFoodSelect')?.value || '';
+    const targetFoodId = rawFoodId ? String(rawFoodId) : null;
     $$('#animalGrid .animal-card').forEach(card => {
       card.classList.remove('no-feeding-state');
       const tg = card.querySelector('.toggle-no-feeding');
       tg.classList.remove('on');
       tg.textContent = '給餌あり';
+      if (targetFoodId) {
+        // 選ばれた餌だけをONにする（他はOFF）
+        card.querySelectorAll('.checkbox-pill').forEach(pill => pill.classList.remove('on'));
+        const targetPill = card.querySelector(`.checkbox-pill[data-food-id="${targetFoodId}"]`);
+        if (targetPill) targetPill.classList.add('on');
+      }
     });
-    showToast('全個体を「給餌あり」に設定（餌の種類は個別に選択）');
+    if (targetFoodId) {
+      const foodName = state.foods.find(f => String(f.id) === targetFoodId)?.name || '';
+      showToast(`全個体を「給餌あり」に設定＋「${foodName}」を適用`);
+    } else {
+      showToast('全個体を「給餌あり」に設定（餌の種類は個別に選択）');
+    }
   });
 
   // 餌の種類を一括適用
