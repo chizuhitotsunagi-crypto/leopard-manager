@@ -53,16 +53,25 @@ async function loadMasters() {
   sel.innerHTML = '<option value="">選択...</option>' +
     state.staff.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
 
-  // 一括餌セレクト
+  // 一括餌セレクト（イエコ・レオバイトのみ。それ以外は個別カードで選択）
   const bulk = $('#bulkFoodSelect');
   if (bulk) {
+    const BULK_ALLOWED = ['イエコ', 'レオバイト'];
+    const bulkFoods = state.foods.filter(f => BULK_ALLOWED.includes(f.name));
     bulk.innerHTML = '<option value="">餌の種類を選択...</option>' +
-      state.foods.map(f => `<option value="${f.id}">${f.name}</option>`).join('');
+      bulkFoods.map(f => `<option value="${f.id}">${f.name}</option>`).join('');
   }
 }
 
 // ===== 個体グリッド描画 =====
-const POOP_OPTIONS = ['なし', '1', '2', '3', '4以上', '異常（要確認）'];
+const POOP_OPTIONS = ['なし', 'あり'];
+
+// 過去データ（1/2/3/4以上/異常など）は「あり」扱いに正規化する
+function normalizePoop(v) {
+  if (!v || v === '') return 'なし';
+  if (v === 'なし') return 'なし';
+  return 'あり'; // 数字や異常はすべて「あり」扱い
+}
 
 function renderAnimalGrid() {
   const grid = $('#animalGrid');
@@ -263,7 +272,7 @@ async function loadRecord(date) {
     card.querySelector('.toggle-no-feeding').classList.toggle('on', isNo);
     card.querySelector('.toggle-no-feeding').textContent = isNo ? '給餌なし' : '給餌あり';
     card.querySelector('.amount-input').value = f.amount || '';
-    card.querySelector('.poop-input').value = f.poop || 'なし';
+    card.querySelector('.poop-input').value = normalizePoop(f.poop);
     card.querySelector('.animal-notes').value = f.notes || '';
     const foodIds = (f.foods || []).map(x => x.food_id);
     card.querySelectorAll('.checkbox-pill').forEach(pill => {
@@ -487,7 +496,7 @@ async function applyToFormFromRecord(rec) {
     card.querySelector('.toggle-no-feeding').classList.toggle('on', isNo);
     card.querySelector('.toggle-no-feeding').textContent = isNo ? '給餌なし' : '給餌あり';
     card.querySelector('.amount-input').value = f.amount || '';
-    card.querySelector('.poop-input').value = f.poop || 'なし';
+    card.querySelector('.poop-input').value = normalizePoop(f.poop);
     card.querySelector('.animal-notes').value = f.notes || '';
     const foodIds = (f.foods || []).map(x => x.food_id);
     card.querySelectorAll('.checkbox-pill').forEach(pill => {
