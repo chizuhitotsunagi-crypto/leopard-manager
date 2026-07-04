@@ -108,15 +108,6 @@ function renderAnimalGrid() {
       const cur = toggle.classList.toggle('on');
       card.classList.toggle('no-feeding-state', cur);
       toggle.textContent = cur ? '給餌なし' : '給餌あり';
-      // 「給餌あり」に切り替えた時、まだ何も選んでいなければ「イエコ」を自動選択
-      if (!cur) {
-        const anySelected = card.querySelector('.checkbox-pill.on');
-        if (!anySelected) {
-          const iekoPill = Array.from(card.querySelectorAll('.checkbox-pill'))
-            .find(p => (p.textContent || '').trim() === 'イエコ');
-          if (iekoPill) iekoPill.classList.add('on');
-        }
-      }
     });
     // 餌チェックボックス
     card.querySelectorAll('.checkbox-pill').forEach(pill => {
@@ -393,22 +384,15 @@ function bindEvents() {
     showToast('全個体を「給餌なし」に設定');
   });
 
-  // 全個体「給餌あり」（イエコをデフォルト選択）
+  // 全個体「給餌あり」
   $('#markAllFed').addEventListener('click', () => {
     $$('#animalGrid .animal-card').forEach(card => {
       card.classList.remove('no-feeding-state');
       const tg = card.querySelector('.toggle-no-feeding');
       tg.classList.remove('on');
       tg.textContent = '給餌あり';
-      // まだ何も選ばれていなければ「イエコ」を自動選択
-      const anySelected = card.querySelector('.checkbox-pill.on');
-      if (!anySelected) {
-        const iekoPill = Array.from(card.querySelectorAll('.checkbox-pill'))
-          .find(p => (p.textContent || '').trim() === 'イエコ');
-        if (iekoPill) iekoPill.classList.add('on');
-      }
     });
-    showToast('全個体を「給餌あり」に設定（デフォルト：イエコ）');
+    showToast('全個体を「給餌あり」に設定（餌の種類は個別に選択）');
   });
 
   // 餌の種類を一括適用
