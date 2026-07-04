@@ -165,6 +165,12 @@ app.post('/api/records', wrap(async (req, res) => {
   res.json({ id, record_date: req.body.record_date });
 }));
 
+// その日の記録を全削除（日次共通・給餌記録・体重）
+app.delete('/api/records/:date', wrap(async (req, res) => {
+  await repo.deleteRecord(req.params.date);
+  res.json({ ok: true, deleted_date: req.params.date });
+}));
+
 app.get('/api/month/:yyyymm', wrap(async (req, res) => {
   res.json(await repo.listRecordsByMonth(req.params.yyyymm));
 }));

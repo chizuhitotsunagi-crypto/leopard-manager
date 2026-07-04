@@ -384,28 +384,15 @@ function bindEvents() {
     showToast('全個体を「給餌なし」に設定');
   });
 
-  // 全個体「給餌あり」（プルダウンで餌が選ばれていれば同時に反映）
+  // 全個体「給餌あり」（給餌状態のみ切替。餌は「この餌を一括適用」で別途反映）
   $('#markAllFed').addEventListener('click', () => {
-    const rawFoodId = $('#bulkFoodSelect')?.value || '';
-    const targetFoodId = rawFoodId ? String(rawFoodId) : null;
     $$('#animalGrid .animal-card').forEach(card => {
       card.classList.remove('no-feeding-state');
       const tg = card.querySelector('.toggle-no-feeding');
       tg.classList.remove('on');
       tg.textContent = '給餌あり';
-      if (targetFoodId) {
-        // 選ばれた餌だけをONにする（他はOFF）
-        card.querySelectorAll('.checkbox-pill').forEach(pill => pill.classList.remove('on'));
-        const targetPill = card.querySelector(`.checkbox-pill[data-food-id="${targetFoodId}"]`);
-        if (targetPill) targetPill.classList.add('on');
-      }
     });
-    if (targetFoodId) {
-      const foodName = state.foods.find(f => String(f.id) === targetFoodId)?.name || '';
-      showToast(`全個体を「給餌あり」に設定＋「${foodName}」を適用`);
-    } else {
-      showToast('全個体を「給餌あり」に設定（餌の種類は個別に選択）');
-    }
+    showToast('全個体を「給餌あり」に設定（プルダウンから餌を選んで「この餌を一括適用」）');
   });
 
   // 餌の種類を一括適用
@@ -448,6 +435,20 @@ function bindEvents() {
     state.current = prev;
     await applyToFormFromRecord(prev);
     showToast(`${prev.record_date} の内容をコピーしました`);
+  });
+
+  // この日の記録をクリア（サーバー側の保存レコードを削除）
+  $('#clearRecord').addEventListener('click', async () => {
+    const date = $('#recordDate').value;
+    if (!confirm(`${date} の入力を完全に削除しますか？\n（給餌記録・共通項目・体重すべて削除されます。元に戻せません）`)) return;
+    try {
+      await api('DELETE', `/api/records/${date}`);
+      await loadRecord(date);
+      await loadAlerts();
+      showToast(`${date} の記録を削除しました`);
+    } catch (e) {
+      alert('削除失敗: ' + e.message);
+    }
   });
 
   $('#save').addEventListener('click', async () => {
