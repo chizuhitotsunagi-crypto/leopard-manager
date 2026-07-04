@@ -145,6 +145,17 @@ function animalCardHtml(a) {
     ? `<div class="morph" title="${a.morph}">${a.morph}</div>`
     : '';
 
+  // 体重減少アラート（前回体重より5%/10%以上落ちていたらバッジ表示）
+  let weightAlert = '';
+  if (a.latest_weight != null && a.previous_weight != null && a.previous_weight > 0) {
+    const dropPct = ((a.previous_weight - a.latest_weight) / a.previous_weight) * 100;
+    if (dropPct >= 10) {
+      weightAlert = `<span class="weight-alert weight-alert-danger" title="前回 ${a.previous_weight}g → 今回 ${a.latest_weight}g（-${dropPct.toFixed(1)}%）">⚠️ 体重10%減</span>`;
+    } else if (dropPct >= 5) {
+      weightAlert = `<span class="weight-alert weight-alert-warn" title="前回 ${a.previous_weight}g → 今回 ${a.latest_weight}g（-${dropPct.toFixed(1)}%）">⚠️ 体重5%減</span>`;
+    }
+  }
+
   const poopOptions = POOP_OPTIONS.map(v =>
     `<option value="${v}">${v || '選択...'}</option>`
   ).join('');
@@ -158,6 +169,7 @@ function animalCardHtml(a) {
         <div class="name">
           <span class="sex-badge">${sexBadge}</span>
           ${a.name}
+          ${weightAlert}
         </div>
         ${morph}
       </div>
