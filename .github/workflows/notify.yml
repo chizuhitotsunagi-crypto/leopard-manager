@@ -1,10 +1,14 @@
 name: Scheduled Notifications
 
-# JST 9:00 → UTC 0:00、JST 18:00 → UTC 9:00
+# 時刻は UTC で書く（JST から -9 時間）
+# JST  9:00 → UTC 0:00  朝の摂食アラート
+# JST 12:00 → UTC 3:00  翌日12時の記入漏れリマインド（前日分）
+# JST 18:00 → UTC 9:00  当日18時の記入漏れリマインド
 on:
   schedule:
-    - cron: '0 0 * * *'   # 朝9時JST: 1週間給餌なし警告
-    - cron: '0 9 * * *'   # 夕方18時JST: 記入漏れ警告
+    - cron: '0 0 * * *'   # JST 09:00 摂食アラート
+    - cron: '0 3 * * *'   # JST 12:00 前日分の記入漏れ再リマインド
+    - cron: '0 9 * * *'   # JST 18:00 当日の記入漏れ
   workflow_dispatch:       # 手動実行も可能
 
 jobs:
@@ -13,7 +17,7 @@ jobs:
     steps:
       - name: Wake up Render and trigger notifications
         run: |
-          # Render がスリープ中なら起動を待つ
+          # Render がスリープ中なら起動を待つ（最大60秒）
           for i in {1..6}; do
             if curl -fsSL --max-time 30 "https://leopard-manager.onrender.com/api/health" > /dev/null; then
               echo "App is awake"
@@ -22,6 +26,20 @@ jobs:
             echo "Attempt $i: waiting for app to wake up..."
             sleep 10
           done
-          # 通知トリガー
-          curl -fsSL --max-time 60 "https://leopard-manager.onrender.com/api/notify/run" \
-            -X GET -H "User-Agent: github-actions-cron" || echo "Notify run completed (any error logged)"
+
+          # 現在の UTC 時刻から実行分岐（JST 換算）
+          UTC_HOUR=$(date -u +%H)
+          JST_HOUR=$(( (10#$UTC_HOUR + 9) % 24 ))
+          echo "UTC hour=$UTC_HOUR, JST hour=$JST_HOUR"
+
+          if [ "$JST_HOUR" = "12" ]; then
+            # 前日日付を渡して記入漏れリマインドを再送
+            YESTERDAY=$(TZ=Asia/Tokyo date -d 'yesterday' +%Y-%m-%d 2>/dev/null || TZ=Asia/Tokyo date -v-1d +%Y-%m-%d)
+            echo "Triggering yesterday missing check for $YESTERDAY"
+            curl -fsSL --max-time 60 "https://leopard-manager.onrender.com/api/notify/run?date=$YESTERDAY" \
+              -X GET -H "User-Agent: github-actions-cron" || echo "Notify run completed"
+          else
+            # 摂食アラート・当日記入漏れ（日付指定なし＝今日）
+            curl -fsSL --max-time 60 "https://leopard-manager.onrender.com/api/notify/run" \
+              -X GET -H "User-Agent: github-actions-cron" || echo "Notify run completed"
+          fi
