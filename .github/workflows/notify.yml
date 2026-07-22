@@ -32,14 +32,22 @@ jobs:
           JST_HOUR=$(( (10#$UTC_HOUR + 9) % 24 ))
           echo "UTC hour=$UTC_HOUR, JST hour=$JST_HOUR"
 
-          if [ "$JST_HOUR" = "12" ]; then
-            # 前日日付を渡して記入漏れリマインドを再送
+          BASE="https://leopard-manager.onrender.com/api/notify/run"
+
+          if [ "$JST_HOUR" = "9" ] || [ "$JST_HOUR" = "10" ]; then
+            # 朝：摂食アラートのみ（記入漏れは走らせない）
+            echo "Triggering long-term food alert only"
+            curl -fsSL --max-time 60 "$BASE?type=long" \
+              -X GET -H "User-Agent: github-actions-cron" || echo "Notify run completed"
+          elif [ "$JST_HOUR" = "12" ] || [ "$JST_HOUR" = "13" ]; then
+            # 昼：前日日付の記入漏れリマインドのみ
             YESTERDAY=$(TZ=Asia/Tokyo date -d 'yesterday' +%Y-%m-%d 2>/dev/null || TZ=Asia/Tokyo date -v-1d +%Y-%m-%d)
             echo "Triggering yesterday missing check for $YESTERDAY"
-            curl -fsSL --max-time 60 "https://leopard-manager.onrender.com/api/notify/run?date=$YESTERDAY" \
+            curl -fsSL --max-time 60 "$BASE?type=miss&date=$YESTERDAY" \
               -X GET -H "User-Agent: github-actions-cron" || echo "Notify run completed"
           else
-            # 摂食アラート・当日記入漏れ（日付指定なし＝今日）
-            curl -fsSL --max-time 60 "https://leopard-manager.onrender.com/api/notify/run" \
+            # 夕方18時：当日記入漏れリマインドのみ
+            echo "Triggering today missing check"
+            curl -fsSL --max-time 60 "$BASE?type=miss" \
               -X GET -H "User-Agent: github-actions-cron" || echo "Notify run completed"
           fi

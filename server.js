@@ -209,22 +209,23 @@ app.post('/api/notify/test', wrap(async (req, res) => {
   res.json(await alerts.sendTest({ dryRun: req.query.dry === '1' }));
 }));
 
-app.post('/api/notify/run', wrap(async (req, res) => {
+// type=long → 摂食アラートのみ / type=miss → 記入漏れのみ / 指定なし → 両方
+async function runNotify(req, res) {
   const dryRun = req.query.dry === '1';
   const asOfDate = req.query.date || null;
-  const long = await alerts.checkLongTermFoodAlerts({ dryRun, asOfDate });
-  const miss = await alerts.checkMissingRecords({ dryRun, asOfDate });
-  res.json({ long, miss, asOfDate: asOfDate || new Date().toISOString().slice(0, 10) });
-}));
-
+  const type = (req.query.type || '').toLowerCase();
+  const result = { asOfDate: asOfDate || new Date().toISOString().slice(0, 10) };
+  if (type === 'long' || type === '') {
+    result.long = await alerts.checkLongTermFoodAlerts({ dryRun, asOfDate });
+  }
+  if (type === 'miss' || type === '') {
+    result.miss = await alerts.checkMissingRecords({ dryRun, asOfDate });
+  }
+  res.json(result);
+}
+app.post('/api/notify/run', wrap(runNotify));
 // GET でも呼べるようにする（cronサービスから簡単にアクセスできるように）
-app.get('/api/notify/run', wrap(async (req, res) => {
-  const dryRun = req.query.dry === '1';
-  const asOfDate = req.query.date || null;
-  const long = await alerts.checkLongTermFoodAlerts({ dryRun, asOfDate });
-  const miss = await alerts.checkMissingRecords({ dryRun, asOfDate });
-  res.json({ long, miss, asOfDate: asOfDate || new Date().toISOString().slice(0, 10) });
-}));
+app.get('/api/notify/run', wrap(runNotify));
 
 // ヘルスチェック（uptime用）
 app.get('/api/health', (req, res) => {
