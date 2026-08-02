@@ -66,11 +66,33 @@ async function loadMasters() {
 // ===== 個体グリッド描画 =====
 const POOP_OPTIONS = ['なし', 'あり'];
 
+// 餌の量の選択肢（旧: 数字直接入力 → 新: プルダウン）
+const AMOUNT_OPTIONS = [
+  '',
+  '少なめ（1〜2）',
+  '普通（3〜5）',
+  '多め（5〜7）',
+  'もりもり（7〜10）',
+];
+
 // 過去データ（1/2/3/4以上/異常など）は「あり」扱いに正規化する
 function normalizePoop(v) {
   if (!v || v === '') return 'なし';
   if (v === 'なし') return 'なし';
   return 'あり'; // 数字や異常はすべて「あり」扱い
+}
+
+// 過去データ（1, 2, 3 などの数字直接入力）を新しい選択肢にマッピング
+function normalizeAmount(v) {
+  if (!v || v === '') return '';
+  if (AMOUNT_OPTIONS.includes(v)) return v; // 新形式ならそのまま
+  // 数字を抽出（"3" "1,2" "1〜2" などから最初の数値を拾う）
+  const n = parseInt(String(v).match(/\d+/)?.[0] ?? '', 10);
+  if (isNaN(n)) return ''; // マッピング不可
+  if (n <= 2) return '少なめ（1〜2）';
+  if (n <= 5) return '普通（3〜5）';
+  if (n <= 7) return '多め（5〜7）';
+  return 'もりもり（7〜10）';
 }
 
 function renderAnimalGrid() {
@@ -159,6 +181,9 @@ function animalCardHtml(a) {
   const poopOptions = POOP_OPTIONS.map(v =>
     `<option value="${v}">${v || '選択...'}</option>`
   ).join('');
+  const amountOptions = AMOUNT_OPTIONS.map(v =>
+    `<option value="${v}">${v || '選択...'}</option>`
+  ).join('');
 
   return `
   <div class="animal-card no-feeding-state ${sexClass}" data-id="${a.id}">
@@ -183,7 +208,7 @@ function animalCardHtml(a) {
     <div class="feed-row" style="margin-top:8px">
       <div style="flex:1">
         <label>量</label>
-        <input type="text" class="amount-input" placeholder="例: 1, 2, 3">
+        <select class="amount-input">${amountOptions}</select>
       </div>
       <div style="flex:1">
         <label>糞</label>
@@ -262,7 +287,7 @@ async function loadRecord(date) {
     card.classList.toggle('no-feeding-state', isNo);
     card.querySelector('.toggle-no-feeding').classList.toggle('on', isNo);
     card.querySelector('.toggle-no-feeding').textContent = isNo ? '給餌なし' : '給餌あり';
-    card.querySelector('.amount-input').value = f.amount || '';
+    card.querySelector('.amount-input').value = normalizeAmount(f.amount);
     card.querySelector('.poop-input').value = normalizePoop(f.poop);
     card.querySelector('.animal-notes').value = f.notes || '';
     const foodIds = (f.foods || []).map(x => x.food_id);
@@ -496,7 +521,7 @@ async function applyToFormFromRecord(rec) {
     card.classList.toggle('no-feeding-state', isNo);
     card.querySelector('.toggle-no-feeding').classList.toggle('on', isNo);
     card.querySelector('.toggle-no-feeding').textContent = isNo ? '給餌なし' : '給餌あり';
-    card.querySelector('.amount-input').value = f.amount || '';
+    card.querySelector('.amount-input').value = normalizeAmount(f.amount);
     card.querySelector('.poop-input').value = normalizePoop(f.poop);
     card.querySelector('.animal-notes').value = f.notes || '';
     const foodIds = (f.foods || []).map(x => x.food_id);

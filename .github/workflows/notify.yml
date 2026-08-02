@@ -1,14 +1,12 @@
 name: Scheduled Notifications
 
 # 時刻は UTC で書く（JST から -9 時間）
-# JST  9:00 → UTC 0:00  朝の摂食アラート
-# JST 12:00 → UTC 3:00  翌日12時の記入漏れリマインド（前日分）
+# JST  9:00 → UTC 0:00  朝の通知（摂食アラート＋前日記入漏れ再リマインド）
 # JST 18:00 → UTC 9:00  当日18時の記入漏れリマインド
 on:
   schedule:
-    - cron: '0 0 * * *'   # JST 09:00 摂食アラート
-    - cron: '0 3 * * *'   # JST 12:00 前日分の記入漏れ再リマインド
-    - cron: '0 9 * * *'   # JST 18:00 当日の記入漏れ
+    - cron: '0 0 * * *'   # JST 09:00 摂食＋前日記入漏れ
+    - cron: '0 9 * * *'   # JST 18:00 当日記入漏れ
   workflow_dispatch:       # 手動実行も可能
 
 jobs:
@@ -28,26 +26,25 @@ jobs:
           done
 
           # 現在の UTC 時刻から実行分岐（JST 換算）
+          # GitHub Actions の遅延で ±2 時間ぶれることがあるため広めに判定
           UTC_HOUR=$(date -u +%H)
           JST_HOUR=$(( (10#$UTC_HOUR + 9) % 24 ))
           echo "UTC hour=$UTC_HOUR, JST hour=$JST_HOUR"
 
           BASE="https://leopard-manager.onrender.com/api/notify/run"
 
-          if [ "$JST_HOUR" = "9" ] || [ "$JST_HOUR" = "10" ]; then
-            # 朝：摂食アラートのみ（記入漏れは走らせない）
-            echo "Triggering long-term food alert only"
-            curl -fsSL --max-time 60 "$BASE?type=long" \
-              -X GET -H "User-Agent: github-actions-cron" || echo "Notify run completed"
-          elif [ "$JST_HOUR" = "12" ] || [ "$JST_HOUR" = "13" ]; then
-            # 昼：前日日付の記入漏れリマインドのみ
-            YESTERDAY=$(TZ=Asia/Tokyo date -d 'yesterday' +%Y-%m-%d 2>/dev/null || TZ=Asia/Tokyo date -v-1d +%Y-%m-%d)
-            echo "Triggering yesterday missing check for $YESTERDAY"
-            curl -fsSL --max-time 60 "$BASE?type=miss&date=$YESTERDAY" \
+          # JST 15時 以降 → 「当日夜」判定（記入時間帯 11-16 を過ぎているため当日記入漏れをチェック）
+          # それ以前   → 「朝」判定（摂食アラート＋前日記入漏れ）
+          if [ "$JST_HOUR" -ge 15 ] && [ "$JST_HOUR" -le 23 ]; then
+            echo "[EVENING] Triggering today missing check"
+            curl -fsSL --max-time 60 "$BASE?type=miss" \
               -X GET -H "User-Agent: github-actions-cron" || echo "Notify run completed"
           else
-            # 夕方18時：当日記入漏れリマインドのみ
-            echo "Triggering today missing check"
-            curl -fsSL --max-time 60 "$BASE?type=miss" \
+            echo "[MORNING] Triggering long-term food alert"
+            curl -fsSL --max-time 60 "$BASE?type=long" \
+              -X GET -H "User-Agent: github-actions-cron" || echo "Notify run completed"
+            YESTERDAY=$(TZ=Asia/Tokyo date -d 'yesterday' +%Y-%m-%d 2>/dev/null || TZ=Asia/Tokyo date -v-1d +%Y-%m-%d)
+            echo "[MORNING] Triggering yesterday missing check for $YESTERDAY"
+            curl -fsSL --max-time 60 "$BASE?type=miss&date=$YESTERDAY" \
               -X GET -H "User-Agent: github-actions-cron" || echo "Notify run completed"
           fi
